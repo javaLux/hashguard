@@ -16,7 +16,7 @@ Ensuring the integrity of files through hash sums
 HashGuard is a powerful command-line tool designed to simplify the process of downloading files from the internet and ensuring their integrity using hash sums. With HashGuard, you can confidently download files and verify their authenticity, providing an extra layer of security to your downloads. It is also possible to verify files on the local system.
 
 ## Features
-* **Download files:** You can download a files from the Internet and make sure that they have not been modified during the download process.
+* **Download files:** You can download a file from the Internet and make sure that they have not been modified during the download process.
 * **Local files:** You can also verify a local file with a hash sum
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
@@ -34,7 +34,17 @@ To install Rust on your system, just go to the [official Rust website](https://w
 **Notice:**
 Please refer to the installation instructions for your operating system. For certain operating systems, build tools need to be installed before you can use Rust.
 
+## Installation
+HashGuard is also available on [crates.io]("https://crates.io/crates/hashguard") Rust community's crate registry.
+So you can easily install it as binary on your local system.
+Use the follow command:
+```
+cargo install hashguard
+```
+
 ## Build
+To build this project from scratch follow these steps:
+
 * Clone this repository
 * Open a terminal
 * Navigate to the root directory of the project
@@ -42,7 +52,7 @@ Please refer to the installation instructions for your operating system. For cer
 ```
 cargo build --release
 ```
-* The executbale is stored in the _target_ folder
+* The executbale is stored in the _target/release_ folder
 
 ## How to use
 1. **Command Syntax:**
