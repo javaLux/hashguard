@@ -4,8 +4,12 @@ version = "1.0.0"
 edition = "2021"
 description = "Ensuring the integrity of files through hash sums"
 authors = ["javaLux"]
-license = "MIT"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/javaLux/hashguard"
+readme = "README.md"
+homepage = "https://github.com/javaLux/hashguard"
+keywords = ["cli", "hash", "verify", "file"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
