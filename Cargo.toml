@@ -1,0 +1,19 @@
+[package]
+name = "hashguard"
+version = "1.0.0"
+edition = "2021"
+description = "Ensuring the integrity of files through hash sums"
+authors = ["javaLux"]
+license = "MIT"
+repository = "https://github.com/javaLux/hashguard"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chksum = "0.1.0-rc5"
+clap = { version = "4.3.19", features = ["derive"] }
+indicatif = "0.17.5"
+output-coloring = "0.1.0"
+regex = "1.9.1"
+ureq = "2.7.1"
+url = "2.4.0"
