@@ -24,9 +24,11 @@ pub fn download_file(url: &str, final_file_path: &PathBuf) -> Result<(), String>
             // try to convert content-length to usize
             let content_length = content_length.parse::<usize>();
 
+            // try to start the download
             if let Ok(content_length) = content_length {
                 if content_length > 0 {
-                    // start the download
+                    
+                    // Sender ans Receiver for a Thread-Safe messaging
                     let (sender, receiver) = mpsc::channel();
 
                     let mut downloaded_bytes: usize = 0;
