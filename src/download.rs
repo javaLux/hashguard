@@ -27,7 +27,6 @@ pub fn download_file(url: &str, final_file_path: &PathBuf) -> Result<(), String>
             // try to start the download
             if let Ok(content_length) = content_length {
                 if content_length > 0 {
-                    
                     // Sender ans Receiver for a Thread-Safe messaging
                     let (sender, receiver) = mpsc::channel();
 
