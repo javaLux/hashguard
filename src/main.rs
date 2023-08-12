@@ -135,16 +135,20 @@ fn perform_download_command(download_args: DownloadArgs, os_type: OS) {
                 download_args.algorithm,
             );
 
-            if let Err(err) = is_modified {
-                println!(
-                    "{}: {}",
-                    ERROR_TEMPLATE_NO_BG_COLOR.output("File could not be processed"),
-                    err
-                );
-            } else if !is_modified.ok().unwrap() {
-                println!("{}", INFO_TEMPLATE.output("Hash sum match"));
-            } else {
-                println!("{}", ERROR_TEMPLATE.output("Hash sum do not match"));
+            match is_modified {
+                Ok(false) => {
+                    println!("{}", INFO_TEMPLATE.output("Hash sum match"));
+                }
+                Ok(true) => {
+                    println!("{}", ERROR_TEMPLATE.output("Hash sum do not match"));
+                }
+                Err(error) => {
+                    println!(
+                        "{}: {}",
+                        ERROR_TEMPLATE_NO_BG_COLOR.output("File could not be processed"),
+                        error
+                    );
+                }
             }
 
             // Finally print the file location
@@ -179,16 +183,20 @@ fn perform_local_command(local_args: LocalArgs) {
             local_args.algorithm,
         );
 
-        if let Err(err) = is_modified {
-            println!(
-                "{}: {}",
-                ERROR_TEMPLATE_NO_BG_COLOR.output("File could not be processed"),
-                err
-            );
-        } else if !is_modified.ok().unwrap() {
-            println!("{}", INFO_TEMPLATE.output("Hash sum match"));
-        } else {
-            println!("{}", ERROR_TEMPLATE.output("Hash sum do not match"));
+        match is_modified {
+            Ok(false) => {
+                println!("{}", INFO_TEMPLATE.output("Hash sum match"));
+            }
+            Ok(true) => {
+                println!("{}", ERROR_TEMPLATE.output("Hash sum do not match"));
+            }
+            Err(error) => {
+                println!(
+                    "{}: {}",
+                    ERROR_TEMPLATE_NO_BG_COLOR.output("File could not be processed"),
+                    error
+                );
+            }
         }
     } else {
         println!(

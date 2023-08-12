@@ -42,17 +42,20 @@ where
     let handle_thread = thread::spawn(move || {
         let result = chksum::<T, _>(file);
 
-        if let Err(err) = result {
-            println!(
-                "{}: {}",
-                ERROR_TEMPLATE_NO_BG_COLOR.output("Failed to generate Hash sum"),
-                err
-            );
-            std::process::exit(1);
-        } else {
-            spinner.finish_and_clear();
-            // send result of calculating the Hash sum to the Main-Thread
-            sender.send(result.ok().unwrap()).unwrap();
+        match result {
+            Ok(digest) => {
+                spinner.finish_and_clear();
+                // send result of calculating the Hash sum to the Main-Thread
+                sender.send(digest).unwrap();
+            }
+            Err(error) => {
+                println!(
+                    "{}: {}",
+                    ERROR_TEMPLATE_NO_BG_COLOR.output("Failed to generate Hash sum"),
+                    error
+                );
+                std::process::exit(1);
+            }
         }
     });
 
