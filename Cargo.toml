@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chksum = "0.1.0-rc5"
+chksum = "0.2.0"
 clap = { version = "4.3.19", features = ["derive"] }
 indicatif = "0.17.5"
 output-coloring = "0.1.0"
