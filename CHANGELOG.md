@@ -27,9 +27,10 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.4] - 2023-09-13
 ### Changed
-- Improve the genral program logic
+- Improve user specific output
+- Improve the general program logic
 - Update [chksum](https://crates.io/crates/chksum/0.2.0) library to ``v0.2.0``
-- Improve the usage of chksum library
+- Update dependencies ``Cargo.lock``
+- Improve the usage of the ``chksum`` library
 - A big thank you to the following contributors without whom the above changes would not have been possible:
 - [@ventaquil](https://github.com/ventaquil)
-

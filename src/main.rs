@@ -60,7 +60,7 @@ fn perform_download_command(download_args: DownloadArgs, os_type: OS) {
             } else {
                 println!(
                     "{} > {} < {}",
-                    ERROR_TEMPLATE_NO_BG_COLOR.output("The specified output target"),
+                    ERROR_TEMPLATE_NO_BG_COLOR.output("Output target"),
                     dir,
                     ERROR_TEMPLATE_NO_BG_COLOR.output("does not exist or is not a directory")
                 );
