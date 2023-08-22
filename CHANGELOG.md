@@ -25,7 +25,7 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies ``Cargo.lock``
 - Improved error handling and messages.
 
-## [1.0.4] - 2023-09-13
+## [1.0.4] - 2023-08-15
 ### Changed
 - Improve user specific output
 - Improve the general program logic
@@ -34,3 +34,8 @@ All notable changes to this project will be documented in this file. The format 
 - Improve the usage of the ``chksum`` library
 - A big thank you to the following contributors without whom the above changes would not have been possible:
 - [@ventaquil](https://github.com/ventaquil)
+
+## [1.0.5] - 2023-08-22
+### Changed
+- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- fix vulnerabilities -> rustls-webpki: CPU denial of service in certificate path building
