@@ -39,3 +39,8 @@ All notable changes to this project will be documented in this file. The format 
 ### Changed
 - Update dependencies ``Cargo.lock`` + ``Cargo.toml``
 - fix vulnerabilities -> rustls-webpki: CPU denial of service in certificate path building
+
+## [1.0.6] - 2023-10-18
+### Changed
+- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- fix vulnerabilities
