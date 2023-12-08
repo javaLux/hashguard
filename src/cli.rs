@@ -33,11 +33,15 @@ pub struct DownloadArgs {
     /// A custom path for the file to be saved (Default is the user download folder)
     #[arg(short, long, value_name = "DIR")]
     pub output: Option<String>,
+
+    /// Rename the file to be downloaded
+    #[arg(short, long, value_name = "FILE")]
+    pub rename: Option<String>,
 }
 
 #[derive(Debug, Args)]
 pub struct LocalArgs {
-    /// Path to the local file
+    /// Path to the file
     pub file_path: String,
 
     /// Origin hash sum of the file

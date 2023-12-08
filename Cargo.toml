@@ -1,10 +1,10 @@
 [package]
 name = "hashguard"
-version = "1.0.6"
+version = "1.0.7"
 edition = "2021"
 description = "Ensuring the integrity of files through hash sums"
 authors = ["javaLux"]
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/javaLux/hashguard"
 readme = "README.md"
 homepage = "https://github.com/javaLux/hashguard"
@@ -15,9 +15,13 @@ categories = ["command-line-utilities"]
 
 [dependencies]
 chksum = "0.2.2"
-clap = { version = "4.4.6", features = ["derive"] }
+clap = { version = "4.4.10", features = ["derive"] }
+color-eyre = { version = "0.6.2", default-features = false }
 indicatif = "0.17.7"
 output-coloring = "0.1.0"
 regex = "1.10.2"
-ureq = "2.8.0"
-url = "2.4.0"
+ureq = "2.9.1"
+url = "2.5.0"
+
+[profile.dev.package.backtrace]
+opt-level = 3

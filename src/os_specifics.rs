@@ -11,7 +11,7 @@ const WINDOWS_USER_ENV: &str = "USERPROFILE";
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum OS {
     Linux,
-    MacOsX,
+    MacOs,
     Windows,
 }
 
@@ -23,7 +23,7 @@ pub fn get_os() -> Option<OS> {
     if os_name.eq_ignore_ascii_case(LINUX) {
         Some(OS::Linux)
     } else if os_name.eq_ignore_ascii_case(MAC_OS) {
-        Some(OS::MacOsX)
+        Some(OS::MacOs)
     } else if os_name.eq_ignore_ascii_case(WINDOWS) {
         Some(OS::Windows)
     } else {
@@ -36,21 +36,20 @@ pub fn get_os() -> Option<OS> {
 /// Return None if the OS is unsupported or the user profile env is not set.
 pub fn get_default_download_folder(os_type: &OS) -> Option<String> {
     match os_type {
-        OS::Linux | OS::MacOsX => match std::env::var(UNIX_USER_ENV) {
-            Ok(home) => Some(get_os_specific_path(&home)),
+        OS::Linux | OS::MacOs => match std::env::var(UNIX_USER_ENV) {
+            Ok(home_dir) => Some(build_download_folder_path(&home_dir)),
             _ => None,
         },
         OS::Windows => match std::env::var(WINDOWS_USER_ENV) {
-            Ok(home) => Some(get_os_specific_path(&home)),
+            Ok(home) => Some(build_download_folder_path(&home)),
             _ => None,
         },
     }
 }
 
-/// Get the correct path to the user download folder dependent on the underlying platform.
-/// Handles the platform-specific path separator and ensure
-/// that the file path is valid for the target operating system.
-fn get_os_specific_path(path: &str) -> String {
+/// Use the os specific path separators to build the correct path to the
+/// user download folder
+fn build_download_folder_path(path: &str) -> String {
     let mut path_buf = PathBuf::new();
     path_buf.push(path);
     path_buf.push("Downloads");
@@ -67,7 +66,7 @@ mod test {
 
         match os {
             Some(OS::Linux) => assert_eq!(Some(OS::Linux), os),
-            Some(OS::MacOsX) => assert_eq!(Some(OS::MacOsX), os),
+            Some(OS::MacOs) => assert_eq!(Some(OS::MacOs), os),
             Some(OS::Windows) => assert_eq!(Some(OS::Windows), os),
             None => assert_eq!(None, os),
         }

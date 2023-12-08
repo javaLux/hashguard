@@ -1,6 +1,33 @@
 use std::path::Path;
 use url::Url;
 
+use crate::{
+    color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE},
+    verify::Algorithm,
+};
+
+/// Print the user output dependent on, if the file to check was modified or not and the used hash sum algorithm
+pub fn generate_output(is_file_modified: bool, hash_alg: Option<Algorithm>) {
+    let hash_alg = match hash_alg {
+        Some(alg) => alg,
+        None => Algorithm::SHA2_256,
+    };
+
+    if !is_file_modified {
+        println!(
+            "\n{} - Used hash algorithm: {:?}",
+            INFO_TEMPLATE.output("Hash sum match"),
+            hash_alg
+        );
+    } else {
+        println!(
+            "\n{} - Used hash algorithm: {:?}",
+            ERROR_TEMPLATE.output("Hash sum do not match"),
+            hash_alg
+        );
+    }
+}
+
 /// Gives you the correct time unit dependent on the remaining seconds.
 /// Example:
 ///

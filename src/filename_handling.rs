@@ -1,13 +1,45 @@
+use std::error::Error;
+use std::fmt;
 use std::io::{stdout, Write};
 
 use regex::Regex;
 
-use crate::color_templates::{ERROR_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR};
+use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
 use crate::os_specifics;
+use color_eyre::Result;
 
 // const for display the forbidden filename chars dependent on the underlying OS
 const UNIX_INVALID_FILE_NAME_CHARS: &str = r":/\\";
 const WINDOWS_INVALID_FILE_NAME_CHARS: &str = r#"<>:"/\\|?*"#;
+
+#[derive(Debug)]
+pub enum FilenameError {
+    InvalidOnWindows(String),
+    InvalidOnUnix(String),
+    ReservedFilenameOnWindows,
+    EndsWithADot,
+}
+
+impl Error for FilenameError {}
+
+impl fmt::Display for FilenameError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilenameError::InvalidOnWindows(invalid_chars) => {
+                write!(f, "Following chars are NOT allowed: {}", invalid_chars)
+            }
+            FilenameError::InvalidOnUnix(invalid_chars) => {
+                write!(f, "Following chars are NOT allowed: {}", invalid_chars)
+            }
+            FilenameError::ReservedFilenameOnWindows => {
+                write!(f, "This is a reserved file name and cannot be used",)
+            }
+            FilenameError::EndsWithADot => {
+                write!(f, "File names under Windows must not end with a dot",)
+            }
+        }
+    }
+}
 
 /// Check filename is valid on UNIX based systems
 /// Linux/MacOsX forbidden ASCII characters:
@@ -50,32 +82,40 @@ fn is_reserved_filename_on_windows(filename: &str) -> bool {
     regex_reserved_filenames.is_match(filename)
 }
 
-pub fn is_valid_filename(os_type: &os_specifics::OS, filename: &str) -> bool {
+pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<(), FilenameError> {
     match os_type {
-        os_specifics::OS::Linux | os_specifics::OS::MacOsX => is_filename_valid_on_unix(filename),
+        os_specifics::OS::Linux | os_specifics::OS::MacOs => {
+            if !is_filename_valid_on_unix(filename) {
+                return Err(FilenameError::InvalidOnUnix(
+                    UNIX_INVALID_FILE_NAME_CHARS.to_string(),
+                ));
+            }
+        }
         os_specifics::OS::Windows => {
-            // File names under Windows cannot end with a dot
+            // File names under Windows must not end with a dot
             if filename.ends_with('.') {
-                false
+                return Err(FilenameError::EndsWithADot);
             } else {
                 // check against reserved filename on windows
                 if is_reserved_filename_on_windows(filename) {
-                    false
-                } else {
-                    // test if filename contains invalid chars
-                    is_filename_valid_on_windows(filename)
+                    return Err(FilenameError::ReservedFilenameOnWindows);
+                } else if !is_filename_valid_on_windows(filename) {
+                    return Err(FilenameError::InvalidOnWindows(
+                        WINDOWS_INVALID_FILE_NAME_CHARS.to_string(),
+                    ));
                 }
             }
         }
     }
+    Ok(())
 }
 
 /// Take a filename over the user input (Input prompt) and check if this is a valid filename
 /// dependent on the filename rules of the underlying OS
-pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> String {
+pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> color_eyre::Result<String> {
     let mut file_name = String::new();
 
-    loop {
+    let result_file_name = loop {
         print!("Enter file name: ");
         // to get the input prompt after the 'Enter file name:' without them
         // a new line appears and then follow the input prompt
@@ -87,61 +127,27 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> String {
                 let file_name_trim = file_name.trim().trim_end_matches(&['\r', '\n'][..]);
 
                 // check if the entered file name is valid for the underlying OS
-                match os_type {
-                    os_specifics::OS::Linux | os_specifics::OS::MacOsX => {
-                        if is_filename_valid_on_unix(file_name_trim) {
-                            file_name = file_name_trim.to_string();
-                            break;
-                        } else {
-                            println!(
-                                "{} - Following chars are NOT allowed: {}",
-                                WARN_TEMPLATE_NO_BG_COLOR.output("Invalid file name"),
-                                ERROR_TEMPLATE.output(UNIX_INVALID_FILE_NAME_CHARS)
-                            );
-                            file_name.clear();
-                        }
+                match validate_filename(os_type, file_name_trim) {
+                    Ok(_) => {
+                        break Ok(file_name_trim.to_string());
                     }
-                    os_specifics::OS::Windows => {
-                        // File names under Windows cannot end with a dot,
-                        // so this is removed as a precautionary measure
-                        let file_name_trim = file_name_trim.trim_end_matches(&['.']);
-
-                        // check against reserved filename on windows
-                        if is_reserved_filename_on_windows(file_name_trim) {
-                            println!(
-                                "{} - This is a reserved filename and can not be used",
-                                WARN_TEMPLATE_NO_BG_COLOR.output("Invalid file name")
-                            );
-                            file_name.clear();
-                        } else {
-                            // test if filename contains invalid chars
-                            if is_filename_valid_on_windows(file_name_trim) {
-                                file_name = file_name_trim.to_string();
-                                break;
-                            } else {
-                                println!(
-                                    "{} - Following chars are NOT allowed: {}",
-                                    WARN_TEMPLATE_NO_BG_COLOR.output("Invalid file name"),
-                                    ERROR_TEMPLATE.output(WINDOWS_INVALID_FILE_NAME_CHARS)
-                                );
-                                file_name.clear();
-                            }
-                        }
+                    Err(filename_err) => {
+                        println!(
+                            "{} - {}",
+                            WARN_TEMPLATE_NO_BG_COLOR.output("Invalid file name"),
+                            filename_err
+                        );
+                        file_name.clear();
                     }
                 }
             }
             Err(err) => {
-                println!(
-                    "{}: {}",
-                    ERROR_TEMPLATE.output("Failed to read from STDIN"),
-                    err
-                );
-                std::process::exit(1);
+                break Err(err);
             }
         }
-    }
+    };
 
-    file_name
+    Ok(result_file_name?)
 }
 
 #[cfg(test)]

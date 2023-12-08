@@ -52,7 +52,7 @@ To build this project from scratch follow these steps:
 ```
 cargo build --release
 ```
-* The executbale is stored in the _target/release_ folder
+* The executable is stored in the _target/release_ folder
 
 ## How to use
 1. **Command Syntax:**
@@ -85,7 +85,7 @@ cargo build --release
 ## Notice
 _**No colored console output under windows?**_<br>
 HashGuard of course also works with colored console output (errors = red, hints = yellow, success = green).<br>
-If no colored text is diplayed in the CMD or PowerShell, instead the ANSI escape sequences before and after an output,<br>
+If no colored text is displayed in the CMD or PowerShell, instead the ANSI escape sequences before and after an output,<br>
 then enabling ANSI escape sequence support may help. Open a CMD or PowerShell as admin and execute following command:<br>
 ```
 reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1

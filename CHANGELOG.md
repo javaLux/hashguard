@@ -44,3 +44,8 @@ All notable changes to this project will be documented in this file. The format 
 ### Changed
 - Update dependencies ``Cargo.lock`` + ``Cargo.toml``
 - fix vulnerabilities
+
+## [1.0.7] - 2023-12-08
+### Changed
+- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- 
