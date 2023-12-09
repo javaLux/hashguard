@@ -27,16 +27,10 @@ fn main() -> Result<()> {
             match cli_args.command {
                 cli::Commands::Download(download_args) => {
                     let used_alg = download_args.algorithm;
-                    let command_result = commands::perform_download_command(download_args, os)?;
-                    // print the result
-                    util::generate_output(command_result.is_file_modified, used_alg);
+                    let is_file_modified = commands::perform_download_command(download_args, os)?;
 
-                    // Finally print the file location of the downloaded file
-                    println!(
-                        "{}: {}",
-                        WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
-                        command_result.file_destination.display()
-                    );
+                    // generate the user-specific output, depending on whether the file has been modified or not
+                    util::generate_output(is_file_modified, used_alg);
                 }
                 cli::Commands::Local(local_args) => {
                     let used_alg = local_args.algorithm;
@@ -45,7 +39,7 @@ fn main() -> Result<()> {
                 }
             }
         }
-        // Only Linux, MacOsX and Windows are supported
+        // Only Linux, MacOs and Windows are supported
         None => {
             println!(
                 "{} - Supported OS: {}",

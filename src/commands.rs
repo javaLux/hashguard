@@ -60,7 +60,7 @@ impl fmt::Display for CommandError {
 pub fn perform_download_command(
     download_args: DownloadArgs,
     os_type: os_specifics::OS,
-) -> Result<DownloadCommandResult> {
+) -> Result<bool> {
     // fetch the output target
     let output_target = download_args.output;
 
@@ -147,21 +147,24 @@ pub fn perform_download_command(
         file_destination.push(output_target);
         file_destination.push(file_name);
 
-        // start the file download
-        download::download_file(download_url, &file_destination)?;
+        // start the download
+        download::make_download_req(download_url, &file_destination)?;
 
-        // build the hash sum from the downloaded file and compare with the origin hash sum
+        // Finally print the file location of the downloaded file
+        println!(
+            "{}      : {}",
+            WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
+            file_destination.display()
+        );
+
+        // calculate the hash sum from the downloaded file and compare with the origin hash sum
         let is_file_modified = verify::is_file_modified(
             &file_destination,
             &download_args.hash_sum,
             download_args.algorithm,
         )?;
 
-        // Finally build the result for the download command and return them
-        Ok(DownloadCommandResult {
-            is_file_modified,
-            file_destination,
-        })
+        Ok(is_file_modified)
     } else {
         let command_err = CommandError::InvalidUrl;
         Err(command_err.into())
@@ -171,16 +174,26 @@ pub fn perform_download_command(
 /// Calculate a hash sum for an given local file and compare the generated hash sum with the origin hash sum
 pub fn is_local_file_modified(local_args: LocalArgs) -> Result<bool> {
     // create Path-Object from given file path
-    let source_file = Path::new(&local_args.file_path);
+    let source_file = Path::new(&local_args.file_path).to_path_buf();
 
     // check if the given file exist
     if source_file.exists() {
         // calculate a hash sum from given file and compare with the origin hash sum
-        let is_file_modified = verify::is_file_modified(
-            &source_file.to_path_buf(),
-            &local_args.hash_sum,
-            local_args.algorithm,
-        )?;
+        let is_file_modified =
+            verify::is_file_modified(&source_file, &local_args.hash_sum, local_args.algorithm)?;
+
+        // try to get the absolute path from the source file
+        let absolute_path = match std::fs::canonicalize(&source_file) {
+            Ok(absolute_path) => absolute_path,
+            Err(_) => source_file,
+        };
+
+        println!(
+            "{}      : {}",
+            WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
+            absolute_path.display()
+        );
+
         Ok(is_file_modified)
     } else {
         let source_file_path = source_file

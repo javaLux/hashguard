@@ -45,7 +45,11 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies ``Cargo.lock`` + ``Cargo.toml``
 - fix vulnerabilities
 
-## [1.0.7] - 2023-12-08
+## [1.0.7] - 2023-12-10
 ### Changed
 - Update dependencies ``Cargo.lock`` + ``Cargo.toml``
-- 
+- Refactoring
+- Improvement of the code base
+- Improvement of the user messages
+- Improvement of error handling - use [color-eyre](https://crates.io/crates/color-eyre) as error report handler
+- Add a new CLI-Option [-r, --rename] for the ``download`` command -> you can now specify a new file name for the file to be downloaded

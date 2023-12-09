@@ -9,6 +9,8 @@ use std::{fs::File, path::PathBuf, sync::mpsc, thread, time::Duration};
 
 use color_eyre::Result;
 
+use crate::util;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 /// Indicate the supported Hash-Algorithm to build the file hash sum
 pub enum Algorithm {
@@ -24,13 +26,14 @@ where
     T::Digest: 'static + Send,
 {
     // Build a Spinner-Progress-Bar
-    let spinner = ProgressBar::new_spinner().with_message("Generate hash sum...");
+    let spinner =
+        ProgressBar::new_spinner().with_message("Calculate hash sum... this may take a while");
 
     // Define the spinner style
     spinner.set_style(
         ProgressStyle::default_spinner()
-            .tick_chars("|/--\\")
-            .template("{spinner:.green} {msg}")?,
+            .tick_strings(&util::BOUNCING_BAR)
+            .template("{spinner:.white} {msg}")?,
     );
 
     // set spinner tick every 100ms
@@ -45,14 +48,14 @@ where
         spinner.finish_and_clear();
         sender
             .send(digest)
-            .expect("Couldn't send calculated hash sum over channel");
+            .expect("Couldn't send the calculated hash sum via channel to the main thread");
         Ok(())
     });
 
     // block the main thread until the associated thread is finished
     let hash_sum_result = hash_sum_thread
         .join()
-        .expect("Couldn't join on the hash sum thread");
+        .expect("Couldn't join on the 'hash sum' thread");
 
     hash_sum_result?;
 
