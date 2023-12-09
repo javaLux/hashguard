@@ -5,9 +5,11 @@ use chksum::{
 };
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{error::Error, fs::File, path::PathBuf, sync::mpsc, thread, time::Duration};
+use std::{fs::File, path::PathBuf, sync::mpsc, thread, time::Duration};
 
-use crate::color_templates::ERROR_TEMPLATE_NO_BG_COLOR;
+use color_eyre::Result;
+
+use crate::util;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 /// Indicate the supported Hash-Algorithm to build the file hash sum
@@ -18,19 +20,20 @@ pub enum Algorithm {
     SHA2_512,
 }
 
-fn generate_hash_sum<T: Chksum<File, Error = ChksumError>>(file: File) -> T::Digest
+/// Calculate a hash sum dependent on the given hash sum algorithm
+fn calculate_hash_sum<T: Chksum<File, Error = ChksumError>>(file: File) -> Result<T::Digest>
 where
     T::Digest: 'static + Send,
 {
     // Build a Spinner-Progress-Bar
-    let spinner = ProgressBar::new_spinner().with_message("Generate hash sum...");
+    let spinner =
+        ProgressBar::new_spinner().with_message("Calculate hash sum... this may take a while");
 
     // Define the spinner style
     spinner.set_style(
         ProgressStyle::default_spinner()
-            .tick_chars("|/--\\")
-            .template("{spinner:.green} {msg}")
-            .unwrap(),
+            .tick_strings(&util::BOUNCING_BAR)
+            .template("{spinner:.white} {msg}")?,
     );
 
     // set spinner tick every 100ms
@@ -39,103 +42,81 @@ where
     // use thread-safe Channels to transfer the Hash sum to the Main-Thread
     let (sender, receiver) = mpsc::channel();
 
-    let handle_thread = thread::spawn(move || {
-        let result = chksum::<T, _>(file);
+    let hash_sum_thread = thread::spawn(move || -> Result<()> {
+        let digest = chksum::<T, _>(file)?;
 
-        match result {
-            Ok(digest) => {
-                spinner.finish_and_clear();
-                // send result of calculating the Hash sum to the Main-Thread
-                sender.send(digest).unwrap();
-            }
-            Err(error) => {
-                println!(
-                    "{}: {}",
-                    ERROR_TEMPLATE_NO_BG_COLOR.output("Failed to generate Hash sum"),
-                    error
-                );
-                std::process::exit(1);
-            }
-        }
+        spinner.finish_and_clear();
+        sender
+            .send(digest)
+            .expect("Couldn't send the calculated hash sum via channel to the main thread");
+        Ok(())
     });
 
     // block the main thread until the associated thread is finished
-    handle_thread.join().unwrap();
+    let hash_sum_result = hash_sum_thread
+        .join()
+        .expect("Couldn't join on the 'hash sum' thread");
 
-    let receive_result = receiver.recv();
-    if let Err(err) = receive_result {
-        println!(
-            "{}: {}",
-            ERROR_TEMPLATE_NO_BG_COLOR.output("Failed to generate Hash sum"),
-            err
-        );
-        std::process::exit(1);
-    } else {
-        // return the calculate file hash sum
-        receive_result.ok().unwrap()
-    }
+    hash_sum_result?;
+
+    Ok(receiver.try_recv()?)
 }
 
 pub fn is_file_modified(
     path: &PathBuf,
     origin_hash_sum: &str,
     algorithm: Option<Algorithm>,
-) -> Result<bool, Box<dyn Error>> {
-    let mut is_modified = false;
-
+) -> Result<bool> {
     // create file object
     let file_to_check = File::open(path)?;
 
-    // build the file hash sum dependent on the given algorithm
-    if algorithm.is_some() {
-        match algorithm {
-            Some(Algorithm::MD5) => {
-                let generated_hash_sum = generate_hash_sum::<MD5>(file_to_check);
+    match algorithm {
+        Some(algorithm) => match algorithm {
+            Algorithm::MD5 => {
+                let calculated_hash_sum = calculate_hash_sum::<MD5>(file_to_check)?;
 
-                is_modified = compare_hash_sums(origin_hash_sum, generated_hash_sum);
+                Ok(is_hash_sum_equal(origin_hash_sum, calculated_hash_sum))
             }
-            Some(Algorithm::SHA1) => {
-                let generated_hash_sum = generate_hash_sum::<SHA1>(file_to_check);
+            Algorithm::SHA1 => {
+                let calculated_hash_sum = calculate_hash_sum::<SHA1>(file_to_check)?;
 
-                is_modified = compare_hash_sums(origin_hash_sum, generated_hash_sum);
+                Ok(is_hash_sum_equal(origin_hash_sum, calculated_hash_sum))
             }
-            Some(Algorithm::SHA2_256) => {
-                let generated_hash_sum = generate_hash_sum::<SHA2_256>(file_to_check);
+            Algorithm::SHA2_256 => {
+                let calculated_hash_sum = calculate_hash_sum::<SHA2_256>(file_to_check)?;
 
-                is_modified = compare_hash_sums(origin_hash_sum, generated_hash_sum);
+                Ok(is_hash_sum_equal(origin_hash_sum, calculated_hash_sum))
             }
-            Some(Algorithm::SHA2_512) => {
-                let generated_hash_sum = generate_hash_sum::<SHA2_512>(file_to_check);
+            Algorithm::SHA2_512 => {
+                let calculated_hash_sum = calculate_hash_sum::<SHA2_512>(file_to_check)?;
 
-                is_modified = compare_hash_sums(origin_hash_sum, generated_hash_sum);
+                Ok(is_hash_sum_equal(origin_hash_sum, calculated_hash_sum))
             }
-            _ => {}
+        },
+        None => {
+            // if no specific algorithm given use SHA2_256 as default
+            let calculated_hash_sum = calculate_hash_sum::<SHA2_256>(file_to_check)?;
+
+            Ok(is_hash_sum_equal(origin_hash_sum, calculated_hash_sum))
         }
-    } else {
-        // if no specific algorithm given use SHA2_256 as default
-        let generated_hash_sum = generate_hash_sum::<SHA2_256>(file_to_check);
-
-        is_modified = compare_hash_sums(origin_hash_sum, generated_hash_sum);
     }
-
-    Ok(is_modified)
 }
 
-/// Compare the origin hash sum with the generated hash sum
-fn compare_hash_sums<T: Digest>(origin_hash_sum: &str, generated_hash_sum: T) -> bool {
+/// Compare the origin hash sum with the calculated hash sum
+fn is_hash_sum_equal<T: Digest>(origin_hash_sum: &str, calculated_hash_sum: T) -> bool {
     // check if the origin hash sum is a Upper-Hex or Lower-Hex number
-    let generated_hash_sum = if is_lower_hex(origin_hash_sum) {
+    let calculated_hash_sum = if is_lower_hex(origin_hash_sum) {
         // convert the generated hash sum to a Lower-Hex number
-        format!("{:x}", generated_hash_sum)
+        format!("{:x}", calculated_hash_sum)
     } else {
         // or to a Upper-Hex number
-        format!("{:X}", generated_hash_sum)
+        format!("{:X}", calculated_hash_sum)
     };
 
-    println!("Origin hash sum   : {}", origin_hash_sum);
-    println!("Generated hash sum: {}", generated_hash_sum);
+    println!("Origin hash sum    : {}", origin_hash_sum);
+    println!("Calculated hash sum: {}", calculated_hash_sum);
     // compare hash sums
-    origin_hash_sum != generated_hash_sum
+    origin_hash_sum != calculated_hash_sum
 }
 
 #[allow(dead_code)]

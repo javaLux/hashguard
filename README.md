@@ -13,7 +13,7 @@ Ensuring the integrity of files through hash sums
 
 
 ## Overview
-HashGuard is a powerful command-line tool designed to simplify the process of downloading files from the internet and ensuring their integrity using hash sums. With HashGuard, you can confidently download files and verify their authenticity, providing an extra layer of security to your downloads. It is also possible to verify files on the local system.
+HashGuard is a lean and efficient command-line tool designed to simplify the process of downloading files from the internet and ensuring their integrity using hash sums. With HashGuard, you can confidently download files and verify their authenticity, providing an extra layer of security to your downloads. It is also possible to verify files on the local system.
 
 ## Features
 * **Download files:** You can download a file from the Internet and make sure that they have not been modified during the download process.
@@ -23,8 +23,8 @@ HashGuard is a powerful command-line tool designed to simplify the process of do
 * **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you download and verify files effortlessly.
 
 ## Supported OS
-* Linux
-* MacOsX
+* Linux [All common distributions]
+* MacOs [Tested on MacOs Monterey]
 * Windows 10/11
 
 ## Prerequisites
@@ -52,7 +52,7 @@ To build this project from scratch follow these steps:
 ```
 cargo build --release
 ```
-* The executbale is stored in the _target/release_ folder
+* The executable is stored in the _target/release_ folder
 
 ## How to use
 1. **Command Syntax:**
@@ -64,10 +64,13 @@ cargo build --release
 ``hashguard download https://example.com/file.zip a1b2c3d4e5f6``
 
 * Verify a local file with a hash sum using SHA-1:<br>
-``hashguard local /path/to/local_file.txt 1a2b3c4d5e6f -a sha1``
+``hashguard local /path/to/local_file.txt a1b2c3d4e5f6 -a sha1``
 
 * Use a specific output directory for the downloaded file:<br>
-``hashguard download https://example.com/image.jpg 1a2b3c4d5e6f -o /path/to/output_directory``
+``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -o /path/to/output_directory``
+
+* Use the --rename option to rename the file to be downloaded:<br>
+``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -r my_fancy_new_file.jpg``
 
 * Get general help:<br>
 ``hashguard --help``
@@ -85,7 +88,7 @@ cargo build --release
 ## Notice
 _**No colored console output under windows?**_<br>
 HashGuard of course also works with colored console output (errors = red, hints = yellow, success = green).<br>
-If no colored text is diplayed in the CMD or PowerShell, instead the ANSI escape sequences before and after an output,<br>
+If no colored text is displayed in the CMD or PowerShell, instead the ANSI escape sequences before and after an output,<br>
 then enabling ANSI escape sequence support may help. Open a CMD or PowerShell as admin and execute following command:<br>
 ```
 reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1
