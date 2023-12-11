@@ -15,6 +15,8 @@ Ensuring the integrity of files through hash sums
 ## Overview
 HashGuard is a lean and efficient command-line tool designed to simplify the process of downloading files from the internet and ensuring their integrity using hash sums. With HashGuard, you can confidently download files and verify their authenticity, providing an extra layer of security to your downloads. It is also possible to verify files on the local system.
 
+![Hashguard-Demo](../assets/hashguard_demo.gif?raw=true)
+
 ## Features
 * **Download files:** You can download a file from the Internet and make sure that they have not been modified during the download process.
 * **Local files:** You can also verify a local file with a hash sum
