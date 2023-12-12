@@ -37,7 +37,7 @@ To install Rust on your system, just go to the [official Rust website](https://w
 Please refer to the installation instructions for your operating system. For certain operating systems, build tools need to be installed before you can use Rust.
 
 ## Installation
-HashGuard is also available on [crates.io]("https://crates.io/crates/hashguard") Rust community's crate registry.
+HashGuard is also available on [crates.io](https://crates.io/crates/hashguard) Rust community's crate registry.
 So you can easily install it as binary on your local system.
 Use the follow command:
 ```

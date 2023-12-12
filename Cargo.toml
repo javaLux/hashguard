@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "1.0.7"
+version = "1.0.8"
 edition = "2021"
 description = "Ensuring the integrity of files through hash sums"
 authors = ["javaLux"]
@@ -19,6 +19,7 @@ clap = { version = "4.4.10", features = ["derive"] }
 color-eyre = { version = "0.6.2", default-features = false }
 indicatif = "0.17.7"
 output-coloring = "0.1.0"
+path-absolutize = "3.1.1"
 regex = "1.10.2"
 ureq = "2.9.1"
 url = "2.5.0"

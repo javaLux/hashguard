@@ -1,8 +1,9 @@
+use path_absolutize::Absolutize;
 use std::path::Path;
 use url::Url;
 
 use crate::{
-    color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE},
+    color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
     verify::Algorithm,
 };
 
@@ -94,6 +95,26 @@ pub fn extract_file_name_from_url(url: &str) -> Option<&str> {
     match Path::new(url).file_name() {
         Some(file_name) => Some(file_name.to_str()?),
         None => None,
+    }
+}
+
+/// Prints the passed path as an absolute path, otherwise the passed path
+pub fn print_file_location(path: &Path) {
+    match path.absolutize() {
+        Ok(absolute_path) => {
+            println!(
+                "{}      : {}",
+                WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
+                absolute_path.display()
+            );
+        }
+        Err(_) => {
+            println!(
+                "{}      : {}",
+                WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
+                path.display()
+            );
+        }
     }
 }
 
