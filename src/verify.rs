@@ -5,7 +5,7 @@ use chksum::{
 };
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{fs::File, path::PathBuf, sync::mpsc, thread, time::Duration};
+use std::{fs::File, path::Path, sync::mpsc, thread, time::Duration};
 
 use color_eyre::Result;
 
@@ -63,7 +63,7 @@ where
 }
 
 pub fn is_file_modified(
-    path: &PathBuf,
+    path: &Path,
     origin_hash_sum: &str,
     algorithm: Option<Algorithm>,
 ) -> Result<bool> {

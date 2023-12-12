@@ -71,8 +71,11 @@ pub fn make_download_req(url: &str, final_file_path: &PathBuf) -> color_eyre::Re
                                 // buffer size 4KiB - 4096 bytes
                                 let mut buffer = [0; 4096];
 
+                                // get the owned final file path, because of output the path in write file error msg
+                                let file_path = final_file_path.to_owned();
+
                                 // create the file to write in
-                                let file = File::create(final_file_path)?;
+                                let file = File::create(&file_path)?;
 
                                 let mut writer = BufWriter::new(file);
 
@@ -105,7 +108,7 @@ pub fn make_download_req(url: &str, final_file_path: &PathBuf) -> color_eyre::Re
 
                                                 if let Err(write_err) = write_result {
                                                     let err_description =
-                                                format!("Download failed - Unable to write data into file - Details: {:?}", write_err);
+                                                format!("Download failed - Unable to write data into file '{}' - Details: {:?}", file_path.display(), write_err);
                                                     break Err(DownloadError::new(err_description));
                                                 }
 

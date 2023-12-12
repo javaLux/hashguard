@@ -57,7 +57,7 @@ impl fmt::Display for CommandError {
 }
 
 /// Download a file from the internet, calculate a hash sum for an given local file and compare the generated hash sum with the origin hash sum
-pub fn perform_download_command(
+pub fn is_downloaded_file_modified(
     download_args: DownloadArgs,
     os_type: os_specifics::OS,
 ) -> Result<bool> {
@@ -150,12 +150,8 @@ pub fn perform_download_command(
         // start the download
         download::make_download_req(download_url, &file_destination)?;
 
-        // Finally print the file location of the downloaded file
-        println!(
-            "{}      : {}",
-            WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
-            file_destination.display()
-        );
+        // Finally try to print the file location of the downloaded file as an absolute path
+        util::print_file_location(&file_destination);
 
         // calculate the hash sum from the downloaded file and compare with the origin hash sum
         let is_file_modified = verify::is_file_modified(
@@ -174,25 +170,16 @@ pub fn perform_download_command(
 /// Calculate a hash sum for an given local file and compare the generated hash sum with the origin hash sum
 pub fn is_local_file_modified(local_args: LocalArgs) -> Result<bool> {
     // create Path-Object from given file path
-    let source_file = Path::new(&local_args.file_path).to_path_buf();
+    let source_file = Path::new(&local_args.file_path);
 
     // check if the given file exist
     if source_file.exists() {
         // calculate a hash sum from given file and compare with the origin hash sum
         let is_file_modified =
-            verify::is_file_modified(&source_file, &local_args.hash_sum, local_args.algorithm)?;
+            verify::is_file_modified(source_file, &local_args.hash_sum, local_args.algorithm)?;
 
-        // try to get the absolute path from the source file
-        let absolute_path = match std::fs::canonicalize(&source_file) {
-            Ok(absolute_path) => absolute_path,
-            Err(_) => source_file,
-        };
-
-        println!(
-            "{}      : {}",
-            WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
-            absolute_path.display()
-        );
+        // try to print the absolute path from the source file
+        util::print_file_location(source_file);
 
         Ok(is_file_modified)
     } else {

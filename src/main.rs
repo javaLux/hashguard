@@ -27,7 +27,8 @@ fn main() -> Result<()> {
             match cli_args.command {
                 cli::Commands::Download(download_args) => {
                     let used_alg = download_args.algorithm;
-                    let is_file_modified = commands::perform_download_command(download_args, os)?;
+                    let is_file_modified =
+                        commands::is_downloaded_file_modified(download_args, os)?;
 
                     // generate the user-specific output, depending on whether the file has been modified or not
                     util::generate_output(is_file_modified, used_alg);

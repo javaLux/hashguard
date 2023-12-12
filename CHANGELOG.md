@@ -53,3 +53,13 @@ All notable changes to this project will be documented in this file. The format 
 - Improvement of the user messages
 - Improvement of error handling - use [color-eyre](https://crates.io/crates/color-eyre) as error report handler
 - Add a new CLI-Option [-r, --rename] for the ``download`` command -> you can now specify a new file name for the file to be downloaded
+
+## [1.0.8] - 2023-12-12
+### Added
+- dependency [path-absolutize](https://crates.io/crates/path-absolutize)
+
+### Fixed
+- Fixed bug that the absolute path was not displayed correctly under Windows
+
+### Changed
+- improvement of error messages
