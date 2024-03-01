@@ -2,20 +2,27 @@ use std::error::Error;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use color_eyre::Result;
+use color_eyre::eyre::Result;
 
 use crate::cli::{DownloadArgs, LocalArgs};
-use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
-use crate::download;
+use crate::download::{self, DownloadProperties};
 use crate::filename_handling;
 use crate::os_specifics;
-use crate::util;
-use crate::verify;
+use crate::utils;
+use crate::verify::{self, Algorithm};
 
 #[derive(Debug)]
-pub struct DownloadCommandResult {
+pub struct CommandResult {
+    pub file_location: PathBuf,
+    pub used_algorithm: Algorithm,
+    pub calculated_hash_sum: String,
+    pub hash_compare_result: Option<HashCompareResult>,
+}
+
+#[derive(Debug)]
+pub struct HashCompareResult {
     pub is_file_modified: bool,
-    pub file_destination: PathBuf,
+    pub origin_hash_sum: String,
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -56,139 +63,133 @@ impl fmt::Display for CommandError {
     }
 }
 
-/// Download a file from the internet, calculate a hash sum for an given local file and compare the generated hash sum with the origin hash sum
-pub fn is_downloaded_file_modified(
-    download_args: DownloadArgs,
-    os_type: os_specifics::OS,
-) -> Result<bool> {
+pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<()> {
     // fetch the output target
-    let output_target = download_args.output;
+    let output_target = args.output;
 
     let output_target = match output_target {
         Some(output_target) => {
             // only a existing directory is valid as an output target
-            if Path::new(&output_target).is_dir() {
-                output_target
+            let p = Path::new(&output_target);
+            if p.is_dir() {
+                p.to_path_buf()
             } else {
-                let command_err = CommandError::OutputTargetInvalid(output_target);
-                return Err(command_err.into());
+                let command_err = CommandError::OutputTargetInvalid(utils::get_absolute_path(p));
+                return Err(color_eyre::eyre::eyre!(command_err.to_string()));
             }
         }
         // If no output directory was specified
         None => {
             // try to get the default user download folder dependent on the underlying OS
-            let download_folder = os_specifics::get_default_download_folder(&os_type);
-
-            match download_folder {
-                // The user's download folder was successfully determined
-                Some(download_folder) => download_folder,
-                None => {
-                    // Otherwise, use the current directory as the storage location
-                    let current_working_dir = std::env::current_dir()?;
-                    current_working_dir.to_string_lossy().to_string()
-                }
-            }
+            os_specifics::get_default_download_folder()
         }
     };
 
     // get the download URL
-    let download_url = &download_args.url;
+    let download_url = &args.url;
 
-    if util::is_valid_url(download_url) {
-        // dependent on the given cli options, control the filename
-        let file_name: Result<String> = match download_args.rename {
-            Some(filename) => match filename_handling::validate_filename(&os_type, &filename) {
-                Ok(_) => Ok(filename.to_string()),
-                Err(filename_err) => {
-                    let command_err = CommandError::RenameOptionInvalid(filename_err.to_string());
-                    Err(command_err.into())
-                }
-            },
-            None => {
-                // no rename option given, try to extract file name from url
-                match util::extract_file_name_from_url(download_url) {
-                    Some(filename) => {
-                        // check if this is a valid filename depending on the rules of the underlying OS
-                        match filename_handling::validate_filename(&os_type, filename) {
-                            Ok(_) => Ok(filename.to_string()),
-                            Err(_) => {
-                                println!(
-                                    "{}",
-                                    WARN_TEMPLATE_NO_BG_COLOR
-                                        .output("The extracted filename from the URL is invalid")
-                                );
+    if !utils::is_valid_url(download_url) {
+        let command_err = CommandError::InvalidUrl;
+        return Err(color_eyre::eyre::eyre!(command_err.to_string()));
+    }
 
-                                println!("Please enter a name for the file to be downloaded");
-                                // Make Input-Prompt and return the valid filename
-                                Ok(filename_handling::enter_and_verify_file_name(&os_type)?)
-                            }
-                        }
-                    }
-                    None => {
-                        // no filename was found in the given URL -> enter a custom filename
-                        println!(
-                            "{}",
-                            WARN_TEMPLATE_NO_BG_COLOR.output("Could not extract filename from URL")
-                        );
-
-                        println!("Please enter a name for the file to be downloaded");
-                        // Make Input-Prompt and return the valid filename
-                        Ok(filename_handling::enter_and_verify_file_name(&os_type)?)
-                    }
+    let default_file_name = match args.rename {
+        Some(file_name) => {
+            // validate given file name
+            match filename_handling::validate_filename(&os_type, &file_name) {
+                Ok(_) => Some(file_name),
+                Err(validate_err) => {
+                    let command_err = CommandError::RenameOptionInvalid(validate_err.to_string());
+                    return Err(color_eyre::eyre::eyre!(command_err.to_string()));
                 }
             }
-        };
+        }
+        None => None,
+    };
 
-        // check the filename result
-        let file_name = file_name?;
+    // build the required DownloadProperties
+    let download_properties = DownloadProperties {
+        url: download_url.to_string(),
+        output_target,
+        default_file_name,
+        os_type,
+    };
 
-        // build the final destination path for the file to be download
-        let mut file_destination = PathBuf::new();
-        file_destination.push(output_target);
-        file_destination.push(file_name);
+    // start the download
+    let file_location = download::make_download_req(download_properties)?;
 
-        // start the download
-        download::make_download_req(download_url, &file_destination)?;
+    let mut calculated_hash_sum =
+        verify::get_hash_sum_as_lower_hex(&file_location, args.algorithm)?;
 
-        // Finally try to print the file location of the downloaded file as an absolute path
-        util::print_file_location(&file_destination);
+    let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
+        if !verify::is_lower_hex(&origin_hash_sum) {
+            // convert the calculated hash sum to UpperHex
+            calculated_hash_sum = calculated_hash_sum
+                .chars()
+                .map(|c| c.to_uppercase().to_string())
+                .collect();
+        }
 
-        // calculate the hash sum from the downloaded file and compare with the origin hash sum
-        let is_file_modified = verify::is_file_modified(
-            &file_destination,
-            &download_args.hash_sum,
-            download_args.algorithm,
-        )?;
-
-        Ok(is_file_modified)
+        let is_file_modified = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
+        CommandResult {
+            file_location,
+            used_algorithm: args.algorithm,
+            calculated_hash_sum,
+            hash_compare_result: Some(HashCompareResult {
+                is_file_modified,
+                origin_hash_sum,
+            }),
+        }
     } else {
-        let command_err = CommandError::InvalidUrl;
-        Err(command_err.into())
-    }
+        CommandResult {
+            file_location,
+            used_algorithm: args.algorithm,
+            calculated_hash_sum,
+            hash_compare_result: None,
+        }
+    };
+    utils::processing_cmd_result(cmd_result);
+    Ok(())
 }
 
-/// Calculate a hash sum for an given local file and compare the generated hash sum with the origin hash sum
-pub fn is_local_file_modified(local_args: LocalArgs) -> Result<bool> {
-    // create Path-Object from given file path
-    let source_file = Path::new(&local_args.file_path);
-
+pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
+    let source_file = Path::new(&args.file_path);
     // check if the given file exist
     if source_file.exists() {
-        // calculate a hash sum from given file and compare with the origin hash sum
-        let is_file_modified =
-            verify::is_file_modified(source_file, &local_args.hash_sum, local_args.algorithm)?;
+        let mut calculated_hash_sum =
+            verify::get_hash_sum_as_lower_hex(source_file, args.algorithm)?;
 
-        // try to print the absolute path from the source file
-        util::print_file_location(source_file);
+        let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
+            if !verify::is_lower_hex(&origin_hash_sum) {
+                // convert the calculated hash sum to UpperHex
+                calculated_hash_sum = calculated_hash_sum
+                    .chars()
+                    .map(|c| c.to_uppercase().to_string())
+                    .collect();
+            }
 
-        Ok(is_file_modified)
+            let is_file_modified = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
+            CommandResult {
+                file_location: source_file.to_path_buf(),
+                used_algorithm: args.algorithm,
+                calculated_hash_sum,
+                hash_compare_result: Some(HashCompareResult {
+                    is_file_modified,
+                    origin_hash_sum,
+                }),
+            }
+        } else {
+            CommandResult {
+                file_location: source_file.to_path_buf(),
+                used_algorithm: args.algorithm,
+                calculated_hash_sum,
+                hash_compare_result: None,
+            }
+        };
+        utils::processing_cmd_result(cmd_result);
+        Ok(())
     } else {
-        let source_file_path = source_file
-            .as_os_str()
-            .to_owned()
-            .to_string_lossy()
-            .to_string();
-        let command_err = CommandError::FileNotExist(source_file_path);
-        Err(command_err.into())
+        let command_err = CommandError::FileNotExist(utils::get_absolute_path(source_file));
+        Err(color_eyre::eyre::eyre!(command_err.to_string()))
     }
 }

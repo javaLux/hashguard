@@ -6,11 +6,7 @@ use regex::Regex;
 
 use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
 use crate::os_specifics;
-use color_eyre::Result;
-
-// const for display the forbidden filename chars dependent on the underlying OS
-const UNIX_INVALID_FILE_NAME_CHARS: &str = r":/\\";
-const WINDOWS_INVALID_FILE_NAME_CHARS: &str = r#"<>:"/\\|?*"#;
+use color_eyre::eyre::Result;
 
 #[derive(Debug)]
 pub enum FilenameError {
@@ -46,7 +42,7 @@ impl fmt::Display for FilenameError {
 /// : (colon)
 /// / (forward slash)
 /// \ (backslash)
-fn is_filename_valid_on_unix(filename: &str) -> bool {
+pub fn is_filename_valid_on_unix(filename: &str) -> bool {
     // Define a regular expression to match valid UNIX filenames
     let regex_invalid_chars = Regex::new(r"^[^:/\\]+$").unwrap();
     regex_invalid_chars.is_match(filename)
@@ -63,7 +59,7 @@ fn is_filename_valid_on_unix(filename: &str) -> bool {
 ///    | (vertical bar or pipe)
 ///    ? (question mark)
 ///    * (asterisk)
-fn is_filename_valid_on_windows(filename: &str) -> bool {
+pub fn is_filename_valid_on_windows(filename: &str) -> bool {
     // Define a regular expression to match invalid ASCII characters
     let regex_invalid_chars = Regex::new(r#"^[^<>:"/\\|?*]+$"#).unwrap();
 
@@ -74,7 +70,7 @@ fn is_filename_valid_on_windows(filename: &str) -> bool {
 /// The following filenames are reserved on Windows:
 /// CON, PRN, AUX, NUL COM1, COM2, COM3, COM4, COM5, COM6, COM7, COM8, COM9
 /// LPT1, LPT2, LPT3, LPT4, LPT5, LPT6, LPT7, LPT8, LPT9
-fn is_reserved_filename_on_windows(filename: &str) -> bool {
+pub fn is_reserved_filename_on_windows(filename: &str) -> bool {
     // Define the regular expression to find reserved filenames, e.g. CON, CON.txt, con.txt will match
     let regex_reserved_filenames =
         Regex::new(r"^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..+)?$").unwrap();
@@ -82,27 +78,33 @@ fn is_reserved_filename_on_windows(filename: &str) -> bool {
     regex_reserved_filenames.is_match(filename)
 }
 
-pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<(), FilenameError> {
+pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<()> {
     match os_type {
         os_specifics::OS::Linux | os_specifics::OS::MacOs => {
             if !is_filename_valid_on_unix(filename) {
-                return Err(FilenameError::InvalidOnUnix(
-                    UNIX_INVALID_FILE_NAME_CHARS.to_string(),
-                ));
+                let file_name_err = FilenameError::InvalidOnUnix(
+                    os_specifics::UNIX_INVALID_FILE_NAME_CHARS.to_string(),
+                );
+                return Err(color_eyre::eyre::eyre!(file_name_err.to_string()));
             }
         }
         os_specifics::OS::Windows => {
             // File names under Windows must not end with a dot
             if filename.ends_with('.') {
-                return Err(FilenameError::EndsWithADot);
+                return Err(color_eyre::eyre::eyre!(
+                    FilenameError::EndsWithADot.to_string()
+                ));
             } else {
                 // check against reserved filename on windows
                 if is_reserved_filename_on_windows(filename) {
-                    return Err(FilenameError::ReservedFilenameOnWindows);
-                } else if !is_filename_valid_on_windows(filename) {
-                    return Err(FilenameError::InvalidOnWindows(
-                        WINDOWS_INVALID_FILE_NAME_CHARS.to_string(),
+                    return Err(color_eyre::eyre::eyre!(
+                        FilenameError::ReservedFilenameOnWindows.to_string()
                     ));
+                } else if !is_filename_valid_on_windows(filename) {
+                    let file_name_err = FilenameError::InvalidOnWindows(
+                        os_specifics::WINDOWS_INVALID_FILE_NAME_CHARS.to_string(),
+                    );
+                    return Err(color_eyre::eyre::eyre!(file_name_err.to_string()));
                 }
             }
         }
@@ -112,14 +114,14 @@ pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<(
 
 /// Take a filename over the user input (Input prompt) and check if this is a valid filename
 /// dependent on the filename rules of the underlying OS
-pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> color_eyre::Result<String> {
+pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> {
     let mut file_name = String::new();
 
     let result_file_name = loop {
         print!("Enter file name: ");
         // to get the input prompt after the 'Enter file name:' without them
         // a new line appears and then follow the input prompt
-        stdout().flush().unwrap();
+        stdout().flush()?;
 
         match std::io::stdin().read_line(&mut file_name) {
             Ok(_) => {
@@ -142,93 +144,11 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> color_eyre::Res
                 }
             }
             Err(err) => {
-                break Err(err);
+                let err_msg = format!("{:?}", err);
+                break Err(color_eyre::eyre::eyre!(err_msg));
             }
         }
     };
 
-    Ok(result_file_name?)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_filenames_windows() {
-        let filename1 = "valid_filename.txt";
-        let filename2 = "test/filename.txt";
-        let filename3 = "file?name.pdf";
-        let filename4 = "filename\\.csv";
-
-        assert!(is_filename_valid_on_windows(filename1));
-        assert!(!is_filename_valid_on_windows(filename2));
-        assert!(!is_filename_valid_on_windows(filename3));
-        assert!(!is_filename_valid_on_windows(filename4));
-    }
-
-    #[test]
-    fn test_reserved_filename_on_windows() {
-        let reserved_filenames = vec![
-            "CON",
-            "PRN",
-            "AUX",
-            "NUL",
-            "COM1",
-            "COM2",
-            "COM3",
-            "COM4",
-            "COM5",
-            "COM6",
-            "COM7",
-            "COM8",
-            "COM9",
-            "LPT1",
-            "LPT2",
-            "LPT3",
-            "LPT4",
-            "LPT5",
-            "LPT6",
-            "LPT7",
-            "LPT8",
-            "LPT9",
-            "CON.txt",
-            "PRN.docs",
-            "AUX.toml",
-            "NUL.cu",
-            "COM1.bin",
-            "COM2.test",
-            "COM3.zip",
-            "COM4.7z",
-            "COM5.op",
-            "COM6.exe",
-            "COM7.sh",
-            "COM8.rs",
-            "COM9.lil",
-        ];
-
-        for filename in reserved_filenames {
-            assert!(is_reserved_filename_on_windows(filename));
-        }
-    }
-
-    #[test]
-    fn trim_dot_from_end() {
-        let test_string = "Hello world.";
-        let result = test_string.trim_end_matches(&['.']);
-        assert_eq!(result, "Hello world");
-    }
-
-    #[test]
-    fn test_filenames_unix() {
-        let filename1 = "valid_filename";
-        let filename2 = "test/filename.txt";
-        let filename3 = "file:name.pdf";
-        let filename4 = "filename\\";
-
-        assert!(is_filename_valid_on_unix(filename1));
-        assert!(!is_filename_valid_on_unix(filename2));
-        assert!(!is_filename_valid_on_unix(filename3));
-        assert!(!is_filename_valid_on_windows(filename4));
-    }
+    result_file_name
 }

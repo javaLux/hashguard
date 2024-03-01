@@ -5,7 +5,9 @@ mod commands;
 mod download;
 mod filename_handling;
 mod os_specifics;
-mod util;
+mod panic_handling;
+mod tests;
+mod utils;
 mod verify;
 
 use clap::Parser;
@@ -13,36 +15,42 @@ use color_eyre::eyre::Result;
 use color_templates::*;
 
 fn main() -> Result<()> {
-    // set up error and panic handler
-    color_eyre::install()?;
     // Parse the given CLI-Arguments
-    let cli_args = cli::Cli::parse();
+    let args = cli::Cli::parse();
 
-    // After parsing the cli args, check if the underlying OS is supported
+    utils::initialize_logging(args.log_level)?;
+    utils::initialize_panic_hook(args.log_level)?;
+
+    // get the underlying os type
     let os_type = os_specifics::get_os();
 
     match os_type {
         Some(os) => {
             // check which command is given (download or local)
-            match cli_args.command {
-                cli::Commands::Download(download_args) => {
-                    let used_alg = download_args.algorithm;
-                    let is_file_modified =
-                        commands::is_downloaded_file_modified(download_args, os)?;
-
-                    // generate the user-specific output, depending on whether the file has been modified or not
-                    util::generate_output(is_file_modified, used_alg);
+            match args.command {
+                cli::Commands::Download(args) => {
+                    if let Err(cmd_err_report) = commands::handle_download_cmd(args, os) {
+                        log::error!(
+                            "An application error occurred - Details: {:?}",
+                            cmd_err_report.root_cause()
+                        );
+                        return Err(cmd_err_report);
+                    }
                 }
-                cli::Commands::Local(local_args) => {
-                    let used_alg = local_args.algorithm;
-                    let is_file_modified = commands::is_local_file_modified(local_args)?;
-                    util::generate_output(is_file_modified, used_alg);
+                cli::Commands::Local(args) => {
+                    if let Err(cmd_err_report) = commands::handle_local_cmd(args) {
+                        log::error!(
+                            "An application error occurred - Details: {:?}",
+                            cmd_err_report.root_cause()
+                        );
+                        return Err(cmd_err_report);
+                    }
                 }
             }
         }
         // Only Linux, MacOs and Windows are supported
         None => {
-            println!(
+            eprintln!(
                 "{} - Supported OS: {}",
                 WARN_TEMPLATE_NO_BG_COLOR.output(
                     "Could not execute the program, the current Operating-System is unsupported."

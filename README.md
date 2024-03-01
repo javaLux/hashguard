@@ -12,17 +12,27 @@ Ensuring the integrity of files through hash sums
 ```
 
 
-## Overview
+# Overview
 HashGuard is a lean and efficient command-line tool designed to simplify the process of downloading files from the internet and ensuring their integrity using hash sums. With HashGuard, you can confidently download files and verify their authenticity, providing an extra layer of security to your downloads. It is also possible to verify files on the local system.
 
-![Hashguard-Demo](../assets/hashguard_demo.gif?raw=true)
+![Hashguard-Demo](../assets/hashguard-v2.0.0-demo.gif?raw=true)
 
 ## Features
-* **Download files:** You can download a file from the Internet and make sure that they have not been modified during the download process.
-* **Local files:** You can also verify a local file with a hash sum
+* **Download:**
+  * Download a file and have a specific hash sum calculated depending on the selected hash algorithm
+  * Or you can directly enter a known hash sum to compare it after the download.
+    This allows you to check whether the file was changed during the download process
+  
+* **Local:**
+  * As described in the download feature, hash sums can also be calculated from local files or a known hash sum can be specified to compare them
+
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
-* **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you download and verify files effortlessly.
+* **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you easily calculate and compare hash sums.
+* **Log-Level**
+  * You can enable the application debug mode
+    * This provides additional functionality such as logging all relevant operations in a log file.
+    * Furthermore, the debug mode can be useful to get detailed information about an error (e.g. display a full backtrace)
 
 ## Supported OS
 * Linux [All common distributions]
@@ -43,8 +53,12 @@ Use the follow command:
 ```
 cargo install hashguard
 ```
+### Using Natively Compiled Binaries
+If you don't have Rust installed or prefer not to build the project yourself, you can use the precompiled binaries provided in the [Releases](https://github.com/javaLux/hashguard/releases) section. Download the appropriate binary for your operating system and architecture, and you're good to go!
 
-## Build
+- [Download the latest release](https://github.com/javaLux/hashguard/releases/latest)
+
+## Build the project
 To build this project from scratch follow these steps:
 
 * Clone this repository
@@ -54,25 +68,43 @@ To build this project from scratch follow these steps:
 ```
 cargo build --release
 ```
-* The executable is stored in the _target/release_ folder
+* The compiled binary will be available at `target/release/`
 
 ## How to use
-1. **Command Syntax:**
-* ``hashguard download <URL> <HASH_SUM> [OPTIONS]``
-* ``hashguard local <FILE_PATH> <HASH_SUM> [OPTIONS]``
+### General Syntax
+* ``hashguard [OPTIONS] <COMMAND>``
 
-2. **Usage Examples:**
+### Command specific syntax
+* ``hashguard [OPTIONS] download <URL> [HASH_SUM] [OPTIONS]``
+* ``hashguard [OPTIONS] local <FILE_PATH> [HASH_SUM] [OPTIONS]``
+
+### Usage Examples
 * Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:<br>
 ``hashguard download https://example.com/file.zip a1b2c3d4e5f6``
 
+* Download a file and calculate a hash sum with a specific hash algorithm:<br>
+``hashguard download https://example.com/file.zip -a sha2-512``
+
 * Verify a local file with a hash sum using SHA-1:<br>
 ``hashguard local /path/to/local_file.txt a1b2c3d4e5f6 -a sha1``
+
+* Calculate a hash sum from a local file with the default hash algorithm:<br>
+``hashguard local /path/to/local_file.txt``
 
 * Use a specific output directory for the downloaded file:<br>
 ``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -o /path/to/output_directory``
 
 * Use the --rename option to rename the file to be downloaded:<br>
 ``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -r my_fancy_new_file.jpg``
+
+* Enable the debug log level:<br>
+``hashguard -l debug download https://example.com/file.zip a1b2c3d4e5f6``
+  * In the event of an error, a full backtrace is displayed
+  * In addition, all log outputs are saved in a log file in the application's data directory.
+  * You can find out the application data directory with the [--version] command
+
+* Get version info:<br>
+``hashguard --version``
 
 * Get general help:<br>
 ``hashguard --help``
@@ -81,14 +113,15 @@ cargo build --release
 ``hashguard download --help``<br>
 ``hashguard local --help``
 
-3. **Supported Hash Algorithms:**
+### Supported Hash Algorithms
 * MD5
 * SHA-1
 * SHA2-256
 * SHA2-512
 
 ## Notice
-_**No colored console output under windows?**_<br>
+**_No colored console output under windows?_**
+<br>
 HashGuard of course also works with colored console output (errors = red, hints = yellow, success = green).<br>
 If no colored text is displayed in the CMD or PowerShell, instead the ANSI escape sequences before and after an output,<br>
 then enabling ANSI escape sequence support may help. Open a CMD or PowerShell as admin and execute following command:<br>
