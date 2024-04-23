@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [2.0.1] - 2024-04-23
+### Fixed
+- Bump rustls from 0.22.2 to 0.22.4
+  - ``rustls::ConnectionCommon::complete_io`` could fall into an infinite loop based on network input.
+
+### Changed
+- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+<br>
+
 ## [2.0.0] - 2024-03-02
 ### Added
 - Implemented a panic handler to create a `Crash-Report.log` file in case of application crashes. This file contains information about the OS metadata and the crash, aiding in debugging and issue resolution.
