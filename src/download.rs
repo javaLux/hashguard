@@ -5,7 +5,7 @@ use std::{
     fs::File,
     io::{BufWriter, Read, Write},
     path::PathBuf,
-    sync::mpsc,
+    sync::{atomic::Ordering, mpsc},
     thread,
     time::{Duration, Instant},
 };
@@ -13,27 +13,29 @@ use std::{
 use color_eyre::eyre::Result;
 
 use crate::{
-    color_templates::WARN_TEMPLATE_NO_BG_COLOR, filename_handling, os_specifics::OS, utils,
+    app, color_templates::WARN_TEMPLATE_NO_BG_COLOR, filename_handling, os_specifics::OS, utils,
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-#[derive(Debug)]
-struct DownloadError {
-    err_description: String,
-}
-
-impl DownloadError {
-    fn new(err_description: String) -> Self {
-        Self { err_description }
-    }
+#[derive(Debug, Clone)]
+enum DownloadError {
+    DownloadFailed(String),
+    DownloadInterrupted,
 }
 
 impl Error for DownloadError {}
 
 impl fmt::Display for DownloadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DownloadError: {}", self.err_description)
+        match self {
+            DownloadError::DownloadFailed(err) => {
+                write!(f, "Download failed - {}", err)
+            }
+            DownloadError::DownloadInterrupted => {
+                write!(f, "Download interrupted")
+            }
+        }
     }
 }
 
@@ -63,7 +65,7 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
 
     match download_req {
         Ok(response) => {
-            log::info!("{:?}", response);
+            log::debug!("{:?}", response);
 
             // get the Content-Length header
             let content_length = response
@@ -71,11 +73,13 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
                 .unwrap_or_default();
 
             if content_length.is_empty() {
-                let err_description =
-                    "Download failed - The server did not send a content-length header".to_string();
-                return Err(color_eyre::eyre::eyre!(
-                    DownloadError::new(err_description).to_string()
-                ));
+                let err_description = format!(
+                    "The server did not send a {} header",
+                    utils::CONTENT_LENGTH_HEADER
+                );
+                return Err(color_eyre::eyre::eyre!(DownloadError::DownloadFailed(
+                    err_description
+                )));
             }
 
             // IMPORTANT: use the url from the response object, because in case of an redirect the
@@ -117,10 +121,13 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
             match content_length {
                 Ok(content_length) => {
                     if content_length < 1 {
-                        let err_description =
-                            "Download failed - The server sent a content-length of zero"
-                                .to_string();
-                        Err(DownloadError::new(err_description).into())
+                        let err_description = format!(
+                            "The server sent a {} header of zero",
+                            utils::CONTENT_LENGTH_HEADER
+                        );
+                        Err(color_eyre::eyre::eyre!(DownloadError::DownloadFailed(
+                            err_description
+                        )))
                     } else {
                         // use a channel for thread safe communication
                         let (sender, receiver) = mpsc::channel();
@@ -146,8 +153,8 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
                         progress_bar.set_style(ProgressStyle::with_template("[{msg}] [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")?
                                 .progress_chars("#>-"));
 
-                        log::info!("Downloading file with the name: {}", filename,);
-                        log::info!(
+                        log::debug!("Downloading file with the name: {}", filename,);
+                        log::debug!(
                             "Output target: {}",
                             utils::get_absolute_path(&download_properties.output_target)
                         );
@@ -162,6 +169,11 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
                             progress_bar.set_message("Download in progress");
 
                             let download_result: Result<(), DownloadError> = loop {
+                                // check the app state -> if ctrl_c was pressed, abort the download
+                                if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
+                                    break Err(DownloadError::DownloadInterrupted);
+                                }
+
                                 // try to read from the response body
                                 let read_result = body.read(&mut buffer);
 
@@ -172,8 +184,10 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
 
                                         if let Err(write_err) = write_result {
                                             let err_description =
-                                                format!("Download failed - Unable to write data into file '{}' - Details: {:?}", utils::get_absolute_path(&file_path), write_err);
-                                            break Err(DownloadError::new(err_description));
+                                                format!("Unable to write data from server response into file '{}' - Details: {:?}", utils::get_absolute_path(&file_path), write_err);
+                                            break Err(DownloadError::DownloadFailed(
+                                                err_description,
+                                            ));
                                         }
 
                                         // capture the successfully downloaded bytes
@@ -191,31 +205,41 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
                                     }
                                     Err(body_access_err) => {
                                         let err_description =
-                                            format!("Download failed - Could not read from the server response - Details: {:?}", body_access_err);
-                                        break Err(DownloadError::new(err_description));
+                                            format!("Could not read from the server response - Details: {:?}", body_access_err);
+                                        break Err(DownloadError::DownloadFailed(err_description));
                                     }
                                 }
                             };
 
                             progress_bar.finish_and_clear();
 
-                            // Measuring the time where download is done
-                            let end = Instant::now();
-
-                            // calculate the total download time
-                            let total_duration = end - start;
-
                             // build the DownloadResult dependent on the loop result
                             let download_result = match download_result {
-                                Ok(_) => DownloadResult {
-                                    download_err: None,
-                                    duration: Some(total_duration),
-                                    file_path,
-                                },
-                                Err(download_err) => DownloadResult {
-                                    download_err: Some(download_err),
-                                    duration: None,
-                                    file_path,
+                                Ok(_) => {
+                                    // Measuring the time where download is done
+                                    let end = Instant::now();
+
+                                    // calculate the total download time
+                                    let total_duration = end - start;
+
+                                    DownloadResult {
+                                        download_err: None,
+                                        duration: Some(total_duration),
+                                        file_path,
+                                    }
+                                }
+                                Err(ref download_err) => match download_err {
+                                    DownloadError::DownloadFailed(_) => DownloadResult {
+                                        download_err: Some(download_err.clone()),
+                                        duration: None,
+                                        file_path,
+                                    },
+                                    DownloadError::DownloadInterrupted => {
+                                        log::debug!("{} was interrupted by user...", app::APP_NAME);
+                                        println!("{}", app::APP_INTERRUPTED_MSG);
+                                        // terminate app
+                                        std::process::exit(1);
+                                    }
                                 },
                             };
 
@@ -250,12 +274,13 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
                 }
                 Err(parse_err) => {
                     let err_description = format!(
-                            "Download failed - The server sent an invalid content-length - Details: {:?}",
-                            parse_err
-                        );
-                    Err(color_eyre::eyre::eyre!(
-                        DownloadError::new(err_description).to_string()
-                    ))
+                        "The server sent an invalid content-length - Details: {:?}",
+                        parse_err
+                    );
+                    Err(color_eyre::eyre::eyre!(DownloadError::DownloadFailed(
+                        err_description
+                    )
+                    .to_string()))
                 }
             }
         }
@@ -263,22 +288,20 @@ pub fn make_download_req(download_properties: DownloadProperties) -> Result<Path
             // if the download failed - fetch the concrete error type
             match req_err {
                 ureq::Error::Status(code, response_err) => {
-                    let err_description = format!(
-                        "Download failed - HTTP-Status: {}, Response: {:?}",
-                        code, response_err
-                    );
-                    Err(color_eyre::eyre::eyre!(
-                        DownloadError::new(err_description).to_string()
-                    ))
+                    let err_description =
+                        format!("HTTP-Status: {}, Response: {:?}", code, response_err);
+                    Err(color_eyre::eyre::eyre!(DownloadError::DownloadFailed(
+                        err_description
+                    )
+                    .to_string()))
                 }
                 ureq::Error::Transport(transport_err) => {
-                    let err_description = format!(
-                        "Download failed due to HTTP transport error: {:?}",
-                        transport_err
-                    );
-                    Err(color_eyre::eyre::eyre!(
-                        DownloadError::new(err_description).to_string()
-                    ))
+                    let err_description =
+                        format!("due to HTTP transport error: {:?}", transport_err);
+                    Err(color_eyre::eyre::eyre!(DownloadError::DownloadFailed(
+                        err_description
+                    )
+                    .to_string()))
                 }
             }
         }

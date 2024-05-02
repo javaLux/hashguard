@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::utils;
+use crate::app;
 
 const LINUX: &str = "linux";
 const MAC_OS: &str = "macos";
@@ -48,7 +48,7 @@ pub fn get_default_download_folder() -> PathBuf {
         Some(home_dir) => home_dir.join("Downloads"),
         None => PathBuf::new()
             .join(".")
-            .join(utils::PROJECT_NAME)
+            .join(app::APP_NAME)
             .join("Downloads"),
     }
 }

@@ -4,13 +4,23 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [2.0.2] - 2024-05-02
+### Added
+- Add a Signal handler for ``Ctrl_C``
+
+### Changed
+- Improve user error messages
+- Improve debug log messages
+- Refactoring
+<br>
+
 ## [2.0.1] - 2024-04-23
-### Fixed
+### Security
 - Bump rustls from 0.22.2 to 0.22.4
   - ``rustls::ConnectionCommon::complete_io`` could fall into an infinite loop based on network input.
 
 ### Changed
-- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- Update dependencies
 <br>
 
 ## [2.0.0] - 2024-03-02
@@ -21,15 +31,16 @@ All notable changes to this project will be documented in this file. The format 
   - When the log level is set to "debug," a log file is generated in the user's home directory. This file contains all log output generated during the application run.
   - use [-l, --log-level] flag the set the application log level
 
+- **It is now possible to calculate a hash sum without having to specify a comparison hash sum**
+
 ### Fixed
 - Bug fix that sometimes the correct file name could not be extracted when executing the ``Download`` command
   - Correctly extract filenames from redirect URLs
   - using the ``Content-Disposition`` HTTP-Header to extract filename
 
 ### Changed
-- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- Update dependencies
 - Refactoring
-- **It is now possible to calculate a hash sum without having to specify a comparison hash sum**
 <br>
 
 ## [1.0.8] - 2023-12-12
@@ -45,7 +56,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.7] - 2023-12-10
 ### Changed
-- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- Update dependencies
 - Refactoring
 - Improvement of the code base
 - Improvement of the user messages
@@ -57,13 +68,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.6] - 2023-10-18
 ### Changed
-- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- Update dependencies
 - fix vulnerabilities
 <br>
 
 ## [1.0.5] - 2023-08-22
 ### Changed
-- Update dependencies ``Cargo.lock`` + ``Cargo.toml``
+- Update dependencies
 - fix vulnerabilities -> rustls-webpki: CPU denial of service in certificate path building
 <br>
 
@@ -80,13 +91,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.3] - 2023-08-09
 ### Changed
-- Update dependencies ``Cargo.lock``
+- Update dependencies
 - Improved error handling and messages.
 <br>
 
 ## [1.0.2] - 2023-08-02
 ### Changed
-- Update dependencies ``Cargo.lock``
+- Update dependencies
 <br>
 
 ## [1.0.1] - 2023-08-01

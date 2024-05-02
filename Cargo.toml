@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2021"
 description = "Ensuring the integrity of files through hash sums"
 authors = ["javaLux"]
@@ -18,7 +18,9 @@ chksum = "0.3.0"
 chrono = "0.4.38"
 clap = { version = "4.5.4", features = ["derive", "cargo", "string"] }
 color-eyre = "0.6.3"
+ctrlc = "3.4.4"
 indicatif = "0.17.8"
+lazy_static = "1.4.0"
 log = "0.4.21"
 os_info = "3.8.2"
 output-coloring = "0.1.0"
@@ -27,7 +29,7 @@ percent-encoding = "2.3.1"
 regex = "1.10.4"
 simple-home-dir = "0.3.3"
 simplelog = "0.12.2"
-ureq = "2.9.6"
+ureq = "2.9.7"
 url = "2.5.0"
 
 [profile.release]

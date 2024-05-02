@@ -2,11 +2,20 @@
 use chksum::{chksum, Hash};
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{fs::File, path::Path, sync::mpsc, thread, time::Duration};
+use std::{
+    fs::File,
+    path::Path,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc,
+    },
+    thread,
+    time::Duration,
+};
 
 use color_eyre::eyre::Result;
 
-use crate::utils;
+use crate::{app, utils};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 /// Indicate the supported Hash-Algorithm to build the file hash sum
@@ -42,7 +51,7 @@ impl std::fmt::Display for Algorithm {
 /// Returns a `Result<String>` containing the lowercase hexadecimal representation of
 /// the calculated hash sum if the operation is successful. Otherwise, returns an error.
 pub fn get_hash_sum_as_lower_hex(path: &Path, algorithm: Algorithm) -> Result<String> {
-    log::info!(
+    log::debug!(
         "Try to calculate {} hash sum for file: {}",
         algorithm,
         utils::get_absolute_path(path)
@@ -84,11 +93,38 @@ where
     // set spinner tick every 100ms
     spinner.enable_steady_tick(Duration::from_millis(100));
 
+    let is_calculating_checksum = Arc::new(AtomicBool::new(true));
+
+    let is_calculating_checksum_clone = is_calculating_checksum.clone();
+
+    // thread to listen on the app state -> if ctrl_c was pressed, quit the app
+    let listen_crl_c_thread = thread::spawn(move || {
+        while is_calculating_checksum.load(Ordering::SeqCst) {
+            // listen to the app state
+            if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
+                log::debug!("{} was interrupted by user...", app::APP_NAME);
+                println!("{}", app::APP_INTERRUPTED_MSG);
+                // terminate app
+                std::process::exit(1);
+            }
+        }
+    });
+
     // use thread-safe Channels to transfer the Hash sum to the Main-Thread
     let (sender, receiver) = mpsc::channel();
 
     let hash_sum_thread = thread::spawn(move || -> Result<()> {
-        let digest = chksum::<T>(data)?;
+        let digest = match chksum::<T>(data) {
+            Ok(digest) => {
+                is_calculating_checksum_clone.store(false, Ordering::SeqCst);
+                digest
+            }
+            Err(chksum_err) => {
+                is_calculating_checksum_clone.store(false, Ordering::SeqCst);
+                spinner.finish_and_clear();
+                return Err(color_eyre::eyre::eyre!(chksum_err));
+            }
+        };
 
         spinner.finish_and_clear();
         sender
@@ -97,7 +133,11 @@ where
         Ok(())
     });
 
-    // block the main thread until the associated thread is finished
+    // block the main thread until the associated threads are finished
+    listen_crl_c_thread
+        .join()
+        .expect("Couldn't join on the 'listen_ctrl_c' thread");
+
     let hash_sum_result = hash_sum_thread
         .join()
         .expect("Couldn't join on the 'hash sum' thread");

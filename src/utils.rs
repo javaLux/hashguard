@@ -1,18 +1,13 @@
-use clap::ValueEnum;
-use color_eyre::eyre::Result;
 use path_absolutize::Absolutize;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use url::Url;
 
 use crate::{
     color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
     commands::CommandResult,
     os_specifics::{self, OS},
-    panic_handling::PanicReport,
     verify::Algorithm,
 };
-
-pub const PROJECT_NAME: &str = env!("CARGO_CRATE_NAME");
 
 pub const BOUNCING_BAR: [&str; 16] = [
     "[    ]", "[=   ]", "[==  ]", "[=== ]", "[====]", "[ ===]", "[  ==]", "[   =]", "[    ]",
@@ -22,149 +17,11 @@ pub const BOUNCING_BAR: [&str; 16] = [
 pub const CONTENT_LENGTH_HEADER: &str = "Content-Length";
 pub const CONTENT_DISPOSITION_HEADER: &str = "Content-Disposition";
 
-/// Represents the possible application log level
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum LogLevel {
-    Info,
-    Debug,
-}
-
-impl std::fmt::Display for LogLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            LogLevel::Info => {
-                write!(f, "info")
-            }
-            LogLevel::Debug => {
-                write!(f, "debug")
-            }
-        }
-    }
-}
-
-/// Define a custom panic hook to handle a application crash.
-/// Try to reset the terminal properties in case of the application panicked (crashed).
-/// This way, you won't have your terminal messed up if an unexpected error happens.
-pub fn initialize_panic_hook(log_level: LogLevel) -> Result<()> {
-    let is_debug_mode = match log_level {
-        LogLevel::Info => false,
-        LogLevel::Debug => true,
-    };
-    let (_panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default()
-        .capture_span_trace_by_default(true)
-        // show debug info only when app is running in DEBUG mode
-        .display_location_section(is_debug_mode)
-        .display_env_section(is_debug_mode)
-        .into_hooks();
-    eyre_hook.install()?;
-
-    // set the custom panic hook handler
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let mut user_msg = String::new();
-
-        let verbosity_level = match log_level {
-            LogLevel::Info => {
-                user_msg.push_str("The application panicked (crashed). Run the application in DEBUG mode [-l debug] to see the full backtrace.");
-                better_panic::Verbosity::Minimal
-            }
-            LogLevel::Debug => {
-                user_msg.push_str("The application panicked (crashed).");
-                better_panic::Verbosity::Full
-            }
-        };
-
-        // print out the Better Panic stacktrace
-        better_panic::Settings::new()
-            .message(user_msg)
-            .most_recent_first(false)
-            .lineno_suffix(true)
-            .verbosity(verbosity_level)
-            .create_panic_handler()(panic_info);
-
-        // write the Crash-Report file
-        let log_file_name = format!("{}-Crash-Report.log", PROJECT_NAME);
-        let backtrace = std::backtrace::Backtrace::force_capture();
-        let panic_report = PanicReport::new(panic_info, backtrace);
-        if let Err(report_write_err) =
-            panic_report.write_report(&get_data_dir().join(log_file_name))
-        {
-            log::error!("{}", report_write_err);
-        }
-
-        std::process::exit(1);
-    }));
-    Ok(())
-}
-
-/// Initialize the application logging
-pub fn initialize_logging(log_level: LogLevel) -> Result<()> {
-    create_data_dir()?;
-
-    if log_level == LogLevel::Debug {
-        set_full_rust_backtrace();
-        init_log_writer()?;
-        log::info!(
-            "Debug mode is enabled - {} version: {}",
-            env!("CARGO_PKG_NAME"),
-            env!("CARGO_PKG_VERSION")
-        );
-    }
-    Ok(())
-}
-
-/// Initializes the verbosity level for the Rust log output based on the specified LogLevel.
-///
-/// If the provided log level is `LogLevel::Debug`, this function sets the environment
-/// variable "RUST_BACKTRACE" to "full", enabling detailed backtrace information in case
-/// of a panic. This is particularly useful during debugging to aid in identifying the
-/// source of errors.
-fn set_full_rust_backtrace() {
-    std::env::set_var("RUST_BACKTRACE", "full");
-}
-
-/// Initializes the log writer for debugging purposes.
-///
-/// This function creates a debug log file with a name containing the project name and
-/// a timestamp formatted in the "YYYY-MM-DD_HH_MM_SS" format. The log file is stored
-/// in the project's data directory. The logging level is set to debug,
-/// and the logs which was created by the `log` crate are
-/// written to the debug log file using the `simplelog` crate.
-fn init_log_writer() -> Result<()> {
-    let debug_log_file_name = format!(
-        "{}-Debug-{}.log",
-        PROJECT_NAME,
-        chrono::Local::now().format("%Y-%m-%dT%H_%M_%S")
-    );
-    let debug_file = std::fs::File::create(get_data_dir().join(debug_log_file_name))?;
-
-    let config = simplelog::ConfigBuilder::new()
-        .set_time_format_rfc3339()
-        .build();
-    let log_level = simplelog::LevelFilter::Debug;
-    simplelog::WriteLogger::init(log_level, config, debug_file)?;
-
-    Ok(())
-}
-
-/// Creates the application's data directory.
-///
-/// This function creates the necessary data directories,
-/// if they do not exist.
-/// # Returns
-///
-/// Returns a `Result<()>` if the operation succeeds, or an
-/// `Err` variant with an associated `std::io::Error` if any error occurs during the
-/// process.
-pub fn create_data_dir() -> Result<()> {
-    let directory = get_data_dir();
-    std::fs::create_dir_all(directory.clone())?;
-    Ok(())
-}
-
 /// Processing of the command result
 pub fn processing_cmd_result(cmd_result: CommandResult) {
     print_file_location(&cmd_result.file_location);
-    log::info!("Calculated hash sum: {}", cmd_result.calculated_hash_sum);
+    let calculated_hash_output = format!("Calculated hash sum: {}", cmd_result.calculated_hash_sum);
+    log::debug!("{calculated_hash_output}");
 
     match cmd_result.hash_compare_result {
         Some(result) => {
@@ -176,7 +33,7 @@ pub fn processing_cmd_result(cmd_result: CommandResult) {
             );
         }
         None => {
-            println!("Calculated hash sum: {}", cmd_result.calculated_hash_sum);
+            println!("{calculated_hash_output}");
             println!(
                 "\n- Used hash algorithm: {}",
                 WARN_TEMPLATE_NO_BG_COLOR.output(cmd_result.used_algorithm)
@@ -427,49 +284,10 @@ pub fn is_redirection(status_code: u16) -> bool {
     matches!(status_code, 301 | 302 | 307 | 308)
 }
 
-/// Retrieves the data directory path for the project.
-///
-/// This function uses the `simple_home_dir` crate to determine the user's home directory
-/// and constructs the path to the project's data directory within it. If the home directory
-/// is not available, it falls back to a relative path based on the current directory.
-///
-/// # Returns
-///
-/// Returns a `PathBuf` representing the data directory path for the project.
-///
-/// # Note
-///
-/// Ensure that the `PROJECT_NAME` constant is correctly set before calling this function.
-/// The data directory is typically used for storing application-specific data files.
-pub fn get_data_dir() -> PathBuf {
-    match simple_home_dir::home_dir() {
-        Some(home_dir) => home_dir.join(PROJECT_NAME).join(".data"),
-        None => PathBuf::new().join(".").join(PROJECT_NAME).join(".data"),
-    }
-}
-
 /// Return the passed path as an absolute path, otherwise the passed path
 pub fn get_absolute_path(path: &Path) -> String {
     match path.absolutize() {
         Ok(absolute_path) => absolute_path.display().to_string(),
         Err(_) => path.display().to_string(),
     }
-}
-
-/// Get a specific version info string
-pub fn version() -> String {
-    let author = clap::crate_authors!();
-    let version = clap::crate_version!();
-
-    let data_dir_path = get_absolute_path(&get_data_dir());
-
-    format!(
-        "\
-    --- developed with ♥ in Rust
-    Authors                 : {author}
-    Version                 : {version}
-
-    Data directory          : {data_dir_path}
-    "
-    )
 }

@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+pub mod unit_tests {
     use crate::{filename_handling, os_specifics, utils, verify};
 
     #[test]

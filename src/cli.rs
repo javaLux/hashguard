@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 use crate::{
-    utils::{version, LogLevel},
+    app::{version, LogLevel},
     verify::Algorithm,
 };
 
@@ -15,10 +15,9 @@ pub struct Cli {
         short,
         long,
         help = "Use debug to display backtrace and to write a log file",
-        value_enum,
-        default_value_t = LogLevel::Info
+        value_enum
     )]
-    pub log_level: LogLevel,
+    pub log_level: Option<LogLevel>,
 }
 
 #[derive(Debug, Subcommand)]

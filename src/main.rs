@@ -1,4 +1,8 @@
+#[macro_use]
+extern crate lazy_static;
+
 // make own custom modules available
+mod app;
 mod cli;
 mod color_templates;
 mod commands;
@@ -18,8 +22,9 @@ fn main() -> Result<()> {
     // Parse the given CLI-Arguments
     let args = cli::Cli::parse();
 
-    utils::initialize_logging(args.log_level)?;
-    utils::initialize_panic_hook(args.log_level)?;
+    app::initialize_logging(args.log_level)?;
+    app::initialize_panic_hook(args.log_level)?;
+    app::set_ctrl_c_handler()?;
 
     // get the underlying os type
     let os_type = os_specifics::get_os();
