@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file. The format 
 - Improve user error messages
 - Improve debug log messages
 - Refactoring
+- Update dependencies
 <br>
 
 ## [2.0.1] - 2024-04-23
