@@ -116,7 +116,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     };
 
     // start the download
-    let file_location = download::make_download_req(download_properties)?;
+    let file_location = download::make_download(download_properties)?;
 
     let mut calculated_hash_sum =
         verify::get_hash_sum_as_lower_hex(&file_location, args.algorithm)?;
