@@ -3,6 +3,7 @@
 [![dependency status](https://deps.rs/repo/github/javaLux/hashguard/status.svg)](https://deps.rs/repo/github/javaLux/hashguard)
 [![GitHub license](https://img.shields.io/github/license/javaLux/hashguard.svg)](https://github.com/javaLux/hashguard/blob/main/LICENSE)
 ![crates.io](https://img.shields.io/crates/v/hashguard.svg)
+![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
 Ensuring the integrity of files through hash sums
 
@@ -26,6 +27,9 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
   * Download a file and have a specific hash sum calculated depending on the selected hash algorithm
   * Or you can directly enter a known hash sum to compare it after the download.
     This allows you to check whether the file was changed during the download process
+  * **_Notice_**
+    * If you use the download command, please enclose the URL in double quotation marks.
+      Because by enclosing the URL in double quotation marks, you tell the shell to treat the entire string as a single argument, even if it contains spaces or other special characters. This can prevent errors and unexpected behavior in your shell.
   
 * **Local:**
   * As described in the download feature, hash sums can also be calculated from local files or a known hash sum can be specified to compare them
@@ -83,39 +87,64 @@ cargo build --release
 * ``hashguard [OPTIONS] local <FILE_PATH> [HASH_SUM] [OPTIONS]``
 
 ### Usage Examples
-* Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:<br>
-``hashguard download https://example.com/file.zip a1b2c3d4e5f6``
+* Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:
+  ````shell
+  hashguard download "https://example.com/file.zip" a1b2c3d4e5f6
+  ````
 
-* Download a file and calculate a hash sum with a specific hash algorithm:<br>
-``hashguard download https://example.com/file.zip -a sha2-512``
+* Download a file and calculate a hash sum with a specific hash algorithm:
+  ````shell
+  hashguard download "https://example.com/file.zip" -a sha2-512
+  ````
 
-* Verify a local file with a hash sum using SHA-1:<br>
-``hashguard local /path/to/local_file.txt a1b2c3d4e5f6 -a sha1``
+* Verify a local file with a hash sum using SHA-1:
+  ````shell
+  hashguard local /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
+  ````
 
-* Calculate a hash sum from a local file with the default hash algorithm:<br>
-``hashguard local /path/to/local_file.txt``
+* Calculate a hash sum from a local file with the default hash algorithm:
+  ````shell
+  hashguard local /path/to/local_file.txt
+  ````
 
-* Use a specific output directory for the downloaded file:<br>
-``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -o /path/to/output_directory``
+* Use a specific output directory for the downloaded file:
+  ````shell
+  hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -o /path/to/output_directory
+  ````
 
-* Use the --rename option to rename the file to be downloaded:<br>
-``hashguard download https://example.com/image.jpg a1b2c3d4e5f6 -r my_fancy_new_file.jpg``
+* Use the --rename option to rename the file to be downloaded:
+  ````shell
+  hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -r "my_fancy_new_file.jpg"
+  ````
 
-* Enable the debug log level:<br>
-``hashguard -l debug download https://example.com/file.zip a1b2c3d4e5f6``
+* Enable the debug log level:
+  ````shell
+  hashguard -l debug download "https://example.com/file.zip" a1b2c3d4e5f6
+  ````
   * In the event of an error, a full backtrace is displayed
   * In addition, all log outputs are saved in a log file in the application's data directory.
   * You can find out the application data directory with the [--version] command
+  * Please note that the application data directory is created as a hidden directory.
+    To see it, you must activate the property for displaying hidden files and folders for your operating system,
+    if you have not already done so
 
-* Get version info:<br>
-``hashguard --version``
+* Get version info:
+  ````shell
+  hashguard --version
+  ````
 
-* Get general help:<br>
-``hashguard --help``
+* Get general help:
+  ````shell
+  hashguard --help
+  ````
 
-* Get help on a specific command:<br>
-``hashguard download --help``<br>
-``hashguard local --help``
+* Get help on a specific command:
+  ````shell
+  hashguard download --help
+  ````
+  ````shell
+  hashguard local --help
+  ````
 
 ### Supported Hash Algorithms
 * MD5
