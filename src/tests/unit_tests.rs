@@ -114,10 +114,21 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_valid_url() {
+    fn test_valid_url_1() {
         use utils::is_valid_url;
 
         let test_url = "https://example.com/files/document.pdf";
+
+        let result = is_valid_url(test_url);
+
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_valid_url_2() {
+        use utils::is_valid_url;
+
+        let test_url = "https://google.de";
 
         let result = is_valid_url(test_url);
 
@@ -136,14 +147,36 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_extract_filename_from_url() {
+    fn test_extract_filename_from_url_1() {
         use utils::extract_file_name_from_url;
 
         let test_url = "https://example.com/files/document.pdf";
 
         let result = extract_file_name_from_url(test_url);
 
-        assert_eq!(result, Some("document.pdf"));
+        assert_eq!(result, Some("document.pdf".to_string()));
+    }
+
+    #[test]
+    fn test_extract_filename_from_url_2() {
+        use utils::extract_file_name_from_url;
+
+        let test_url = "http://blah.com/path1/path2/test_file.txt?a=1&b=2";
+
+        let result = extract_file_name_from_url(test_url);
+
+        assert_eq!(result, Some("test_file.txt".to_string()));
+    }
+
+    #[test]
+    fn test_extract_filename_from_url_3() {
+        use utils::extract_file_name_from_url;
+
+        let test_url = "https://google.de/";
+
+        let result = extract_file_name_from_url(test_url);
+
+        assert_eq!(result, None);
     }
 
     #[test]

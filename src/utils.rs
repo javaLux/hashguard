@@ -113,13 +113,13 @@ pub fn calc_duration(seconds: u64) -> String {
 ///
 /// # Examples
 ///
-/// ````
+/// ```
 /// let result = is_url_valid("ThisIsAinvalidUrl");
-/// assert_eq!(result, false);
+/// assert!(!result);
 ///
 /// let result = is_url_valid("http://example.com");
-/// assert_eq!(result, true);
-/// ````
+/// assert!(result);
+/// ```
 pub fn is_valid_url(url: &str) -> bool {
     match Url::parse(url) {
         Ok(url) => !url.scheme().is_empty() && url.has_host() && !url.path().is_empty(),
@@ -127,29 +127,62 @@ pub fn is_valid_url(url: &str) -> bool {
     }
 }
 
-/// Extract the filename of a given url.
+/// Extracts the file name from the provided URL.
+///
+/// This function parses the given URL using the `url` crate, extracting the last segment
+/// of the URL path, which typically represents the file name. If the URL is successfully
+/// parsed and a non-empty file name segment is found, it is returned as an `Option<String>`.
+///
 /// # Arguments
 ///
-/// url = The url to be parsed ("http://example.com")
+/// * `url` - A string slice representing the URL from which to extract the file name.
 ///
 /// # Returns
 ///
-/// The filename as string slice if it contains valid utf-8 characters,
-/// otherwise None.
-pub fn extract_file_name_from_url(url: &str) -> Option<&str> {
-    match Path::new(url).file_name() {
-        Some(file_name) => Some(file_name.to_str()?),
-        None => None,
+/// An `Option` containing the extracted file name as a `String`, if found. If the URL
+/// cannot be parsed or no file name is present, `None` is returned.
+///
+/// # Example
+///
+/// ```
+/// let url = "https://example.com/path/to/file.txt?page=2";
+/// assert_eq!(extract_file_name_from_url(url), Some("file.txt".to_string()));
+///
+/// let invalid_url = "not_a_url";
+/// assert_eq!(extract_file_name_from_url(invalid_url), None);
+/// ```
+///
+/// # Note
+/// If the url contains any query parameters (URL parameters) these are automatically removed from
+/// the last URL path segment.
+/// This function does not modify the original URL string.
+pub fn extract_file_name_from_url(url: &str) -> Option<String> {
+    match Url::parse(url) {
+        Ok(url) => {
+            let file_name = url.path().split('/').collect::<Vec<&str>>();
+            match file_name.last() {
+                Some(file_name) => {
+                    if !file_name.is_empty() {
+                        let file_name = file_name.to_string();
+                        Some(file_name)
+                    } else {
+                        None
+                    }
+                }
+                None => None,
+            }
+        }
+        Err(_) => None,
     }
 }
 
 /// Try to extract filename from the given Content-Disposition header or the url
 pub fn extract_file_name(url: &str, content_disposition: &str, os_type: &OS) -> Option<String> {
-    let file_name = if content_disposition.is_empty() {
+    if content_disposition.is_empty() {
         match extract_file_name_from_url(url) {
             Some(filename) => {
                 // we decode as a precaution
-                let filename = decode_percent_encoded_to_utf_8(filename);
+                let filename = decode_percent_encoded_to_utf_8(&filename);
                 // Remove possible invalid characters for the file name dependent on the underlying os
                 Some(replace_invalid_chars_with_underscore(&filename, os_type))
             }
@@ -164,9 +197,7 @@ pub fn extract_file_name(url: &str, content_disposition: &str, os_type: &OS) -> 
             }
             None => None,
         }
-    };
-
-    file_name
+    }
 }
 
 /// Function to extract filename from Content-Disposition header
