@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [2.0.3] - 2024-05-13
+
+### Fixed
+- Bug fix for extracting filename from a specified URL if the ``Content-Disposition`` header not present
+  - In the case that the specified URL contains query parameters (URL parameters) the filename could not extract correctly
+  - This bug is fixed in this version
+
+### Changed
+- Refactoring
+- Update dependencies
+<br>
+
 ## [2.0.2] - 2024-05-02
 ### Added
 - Add a Signal handler for ``Ctrl_C``
