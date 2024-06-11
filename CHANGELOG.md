@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [2.0.4] - 2024-06-11
+
+### Changed
+- Improvement of the URL validation for the ``download`` command, e.g. only the protocols ``http`` and ``https`` are supported
+- Update dependencies
+<br>
+
 ## [2.0.3] - 2024-05-13
 
 ### Fixed

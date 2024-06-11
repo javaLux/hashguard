@@ -43,7 +43,7 @@ impl fmt::Display for CommandError {
                 write!(f, "{}", msg)
             }
             CommandError::InvalidUrl => {
-                write!(f, "The specified url is invalid")
+                write!(f, "The specified url is invalid. An example of a valid URL is 'https://testfile.org'")
             }
             CommandError::OutputTargetInvalid(target) => {
                 let msg = format!(

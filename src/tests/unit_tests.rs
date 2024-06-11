@@ -117,11 +117,9 @@ pub mod unit_tests {
     fn test_valid_url_1() {
         use utils::is_valid_url;
 
-        let test_url = "https://example.com/files/document.pdf";
+        let test_url = "http://example.com/files/document.pdf";
 
-        let result = is_valid_url(test_url);
-
-        assert_eq!(result, true);
+        assert!(is_valid_url(test_url));
     }
 
     #[test]
@@ -130,20 +128,25 @@ pub mod unit_tests {
 
         let test_url = "https://google.de";
 
-        let result = is_valid_url(test_url);
-
-        assert_eq!(result, true);
+        assert!(is_valid_url(test_url));
     }
 
     #[test]
-    fn test_invalid_url() {
+    fn test_invalid_url_1() {
         use utils::is_valid_url;
 
         let test_url = "HelloWorld";
 
-        let result = is_valid_url(test_url);
+        assert!(!is_valid_url(test_url));
+    }
 
-        assert_eq!(result, false);
+    #[test]
+    fn test_invalid_url_2() {
+        use utils::is_valid_url;
+
+        let test_url = "file://tmp/foo";
+
+        assert!(!is_valid_url(test_url));
     }
 
     #[test]

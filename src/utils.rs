@@ -122,7 +122,12 @@ pub fn calc_duration(seconds: u64) -> String {
 /// ```
 pub fn is_valid_url(url: &str) -> bool {
     match Url::parse(url) {
-        Ok(url) => !url.scheme().is_empty() && url.has_host() && !url.path().is_empty(),
+        Ok(url) => {
+            !url.scheme().is_empty()
+                && (url.scheme() == "http" || url.scheme() == "https")
+                && url.has_host()
+                && !url.path().is_empty()
+        }
         Err(_) => false,
     }
 }
