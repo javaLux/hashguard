@@ -2,7 +2,7 @@
 [![Build Status](https://github.com/javaLux/hashguard/actions/workflows/rust.yml/badge.svg)](https://github.com/javaLux/hashguard/actions)
 [![dependency status](https://deps.rs/repo/github/javaLux/hashguard/status.svg)](https://deps.rs/repo/github/javaLux/hashguard)
 [![GitHub license](https://img.shields.io/github/license/javaLux/hashguard.svg)](https://github.com/javaLux/hashguard/blob/main/LICENSE)
-[![crates.io](https://img.shields.io/crates/v/hashguard.svg)]
+[![crates.io](https://img.shields.io/crates/v/hashguard.svg)](https://crates.io/crates/hashguard)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
 Ensuring the integrity of files through hash sums
