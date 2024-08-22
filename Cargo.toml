@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "2.0.4"
+version = "2.0.5"
 edition = "2021"
 description = "Ensuring the integrity of files through hash sums"
 authors = ["javaLux"]
@@ -17,21 +17,21 @@ rust-version = "1.74.0"
 better-panic = "0.3.0"
 chksum = "0.3.0"
 chrono = "0.4.38"
-clap = { version = "4.5.7", features = ["derive", "cargo", "string"] }
+clap = { version = "4.5.10", features = ["derive", "cargo", "string"] }
 color-eyre = "0.6.3"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 indicatif = "0.17.8"
-lazy_static = "1.4.0"
-log = "0.4.21"
+lazy_static = "1.5.0"
+log = "0.4.22"
 os_info = "3.8.2"
 output-coloring = "0.1.0"
 path-absolutize = "3.1.1"
 percent-encoding = "2.3.1"
 regex = "1.10.5"
-simple-home-dir = "0.3.4"
+simple-home-dir = "0.4.0"
 simplelog = "0.12.2"
-ureq = "2.9.7"
-url = "2.5.1"
+ureq = "2.10.0"
+url = "2.5.2"
 
 [profile.release]
 opt-level = "z"

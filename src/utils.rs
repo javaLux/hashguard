@@ -14,8 +14,11 @@ pub const BOUNCING_BAR: [&str; 16] = [
     "[   =]", "[  ==]", "[ ===]", "[====]", "[=== ]", "[==  ]", "[=   ]",
 ];
 
-pub const CONTENT_LENGTH_HEADER: &str = "Content-Length";
-pub const CONTENT_DISPOSITION_HEADER: &str = "Content-Disposition";
+// const for the calculation of the total file size in a human readable format
+const KIB: f64 = 1024.0;
+const MIB: f64 = KIB * KIB;
+const GIB: f64 = KIB * MIB;
+const TIB: f64 = KIB * GIB;
 
 /// Processing of the command result
 pub fn processing_cmd_result(cmd_result: CommandResult) {
@@ -97,6 +100,8 @@ pub fn calc_duration(seconds: u64) -> String {
         format!("{}h {}m {}s", hours, minutes, remaining_seconds)
     } else if minutes > 0 {
         format!("{}m {}s", minutes, remaining_seconds)
+    } else if remaining_seconds < 1 {
+        "< 1s".to_string()
     } else {
         format!("{}s", remaining_seconds)
     }
@@ -325,5 +330,36 @@ pub fn get_absolute_path(path: &Path) -> String {
     match path.absolutize() {
         Ok(absolute_path) => absolute_path.display().to_string(),
         Err(_) => path.display().to_string(),
+    }
+}
+
+/// Converts a given size in bytes into a human-readable format.
+///
+/// # Arguments
+///
+/// * `bytes` - The size in bytes to be converted into a human-readable format.
+///
+/// # Returns
+///
+/// A string representing the human-readable format of the given size.
+///
+/// # Examples
+///
+/// ```
+///  let size_in_bytes: usize = 2048;
+///  let readable_size = convert_bytes_to_human_readable(size_in_bytes);
+///  assert_eq!("2.00 KiB".to_string(), readable_size);
+/// ```
+pub fn convert_bytes_to_human_readable(bytes: usize) -> String {
+    if bytes < KIB as usize {
+        format!("{} B", bytes)
+    } else if bytes < MIB as usize {
+        format!("{:.2} KiB", bytes as f64 / KIB)
+    } else if bytes < GIB as usize {
+        format!("{:.2} MiB", bytes as f64 / MIB)
+    } else if bytes < TIB as usize {
+        format!("{:.2} GiB", bytes as f64 / GIB)
+    } else {
+        format!("{:.2} TiB", bytes as f64 / TIB)
     }
 }

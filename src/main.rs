@@ -33,24 +33,8 @@ fn main() -> Result<()> {
         Some(os) => {
             // check which command is given (download or local)
             match args.command {
-                cli::Commands::Download(args) => {
-                    if let Err(cmd_err_report) = commands::handle_download_cmd(args, os) {
-                        log::error!(
-                            "An application error occurred - Details: {:?}",
-                            cmd_err_report.root_cause()
-                        );
-                        return Err(cmd_err_report);
-                    }
-                }
-                cli::Commands::Local(args) => {
-                    if let Err(cmd_err_report) = commands::handle_local_cmd(args) {
-                        log::error!(
-                            "An application error occurred - Details: {:?}",
-                            cmd_err_report.root_cause()
-                        );
-                        return Err(cmd_err_report);
-                    }
-                }
+                cli::Commands::Download(args) => commands::handle_download_cmd(args, os)?,
+                cli::Commands::Local(args) => commands::handle_local_cmd(args)?,
             }
         }
         // Only Linux, MacOs and Windows are supported

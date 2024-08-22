@@ -175,10 +175,6 @@ impl<'a> PanicReport<'a> {
     }
 
     fn build_human_readable_report(&self) -> String {
-        #[cfg(feature = "nightly")]
-        let message = panic_info.message().map(|m| format!("{}", m));
-
-        #[cfg(not(feature = "nightly"))]
         let message = match (
             self.panic_info.payload().downcast_ref::<&str>(),
             self.panic_info.payload().downcast_ref::<String>(),

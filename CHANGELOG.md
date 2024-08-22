@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [2.0.5] - 2024-08-22
+
+### Changed
+- Improve user and log error messages
+- Now ``chunked`` file downloads are supported
+- Refactoring
+- Update dependencies
+<br>
+
 ## [2.0.4] - 2024-06-11
 
 ### Changed

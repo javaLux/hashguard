@@ -1,11 +1,15 @@
 use std::error::Error;
 use std::fmt;
 use std::io::{stdout, Write};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use regex::Regex;
 
 use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
-use crate::os_specifics;
+use crate::{app, os_specifics};
 use color_eyre::eyre::Result;
 
 #[derive(Debug)]
@@ -39,9 +43,9 @@ impl fmt::Display for FilenameError {
 
 /// Check filename is valid on UNIX based systems
 /// Linux/MacOsX forbidden ASCII characters:
-/// : (colon)
-/// / (forward slash)
-/// \ (backslash)
+/// * \: (colon)
+/// * \/ (forward slash)
+/// * \\ (backslash)
 pub fn is_filename_valid_on_unix(filename: &str) -> bool {
     // Define a regular expression to match valid UNIX filenames
     let regex_invalid_chars = Regex::new(r"^[^:/\\]+$").unwrap();
@@ -50,14 +54,14 @@ pub fn is_filename_valid_on_unix(filename: &str) -> bool {
 
 /// Check if a filename is valid on Windows
 /// Window forbidden ASCII characters:
-///    < (less than)
-///    > (greater than)
-///    : (colon - sometimes works, but is actually NTFS Alternate Data Streams)
-///    " (double quote)
-///    / (forward slash)
-///    \ (backslash)
-///    | (vertical bar or pipe)
-///    ? (question mark)
+///    * \< (less than)
+///    * \> (greater than)
+///    * \: (colon - sometimes works, but is actually NTFS Alternate Data Streams)
+///    * \" (double quote)
+///    * \/ (forward slash)
+///    * \\ (backslash)
+///    * \| (vertical bar or pipe)
+///    * \? (question mark)
 ///    * (asterisk)
 pub fn is_filename_valid_on_windows(filename: &str) -> bool {
     // Define a regular expression to match invalid ASCII characters
@@ -117,8 +121,25 @@ pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<(
 pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> {
     let mut file_name = String::new();
 
+    let is_input = Arc::new(AtomicBool::new(true));
+
+    let is_input_clone = is_input.clone();
+
+    // thread to listen on the app state -> if ctrl_c was pressed, quit the app
+    let listen_crl_c_thread = std::thread::spawn(move || {
+        while is_input.load(Ordering::SeqCst) {
+            // listen to the app state
+            if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
+                log::debug!("{} was interrupted by user...", app::APP_NAME);
+                println!("{}", app::APP_INTERRUPTED_MSG);
+                // terminate app
+                std::process::exit(1);
+            }
+        }
+    });
+
     let result_file_name = loop {
-        print!("Enter file name: ");
+        print!("\t--->: ");
         // to get the input prompt after the 'Enter file name:' without them
         // a new line appears and then follow the input prompt
         stdout().flush()?;
@@ -131,6 +152,7 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> 
                 // check if the entered file name is valid for the underlying OS
                 match validate_filename(os_type, file_name_trim) {
                     Ok(_) => {
+                        is_input_clone.store(false, Ordering::SeqCst);
                         break Ok(file_name_trim.to_string());
                     }
                     Err(filename_err) => {
@@ -144,11 +166,16 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> 
                 }
             }
             Err(err) => {
+                is_input_clone.store(false, Ordering::SeqCst);
                 let err_msg = format!("{:?}", err);
                 break Err(color_eyre::eyre::eyre!(err_msg));
             }
         }
     };
+
+    listen_crl_c_thread
+        .join()
+        .expect("Couldn't join on the 'listen_ctrl_c' thread");
 
     result_file_name
 }

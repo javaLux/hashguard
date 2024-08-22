@@ -1,4 +1,3 @@
-#![allow(where_clauses_object_safety)]
 use chksum::{chksum, Hash};
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -122,7 +121,13 @@ where
             Err(chksum_err) => {
                 is_calculating_checksum_clone.store(false, Ordering::SeqCst);
                 spinner.finish_and_clear();
-                return Err(color_eyre::eyre::eyre!(chksum_err));
+                log::error!(
+                    "{}",
+                    format!("Failed to calculate hash sum - Details: {:?}", chksum_err)
+                );
+                return Err(color_eyre::eyre::eyre!(
+                    "Failed to calculate hash sum for the specified file."
+                ));
             }
         };
 
