@@ -7,7 +7,7 @@ authors = ["javaLux"]
 license = "MIT"
 repository = "https://github.com/javaLux/hashguard"
 readme = "README.md"
-keywords = ["verify", "file", "cli", "tools", "hash", "cryptography"]
+keywords = ["file", "cli", "tools", "hash", "cryptography"]
 categories = ["command-line-utilities", "development-tools", "cryptography"]
 rust-version = "1.74.0"
 
