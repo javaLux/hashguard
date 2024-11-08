@@ -1,4 +1,4 @@
-use std::{backtrace::Backtrace, io::Write, panic::PanicInfo, path::Path};
+use std::{backtrace::Backtrace, io::Write, panic::PanicHookInfo, path::Path};
 
 use crate::utils;
 
@@ -94,7 +94,7 @@ impl std::fmt::Display for CargoMetadata {
 
 #[derive(Debug)]
 pub struct PanicReport<'a> {
-    panic_info: &'a PanicInfo<'a>,
+    panic_info: &'a PanicHookInfo<'a>,
     backtrace: Backtrace,
 }
 
@@ -130,7 +130,7 @@ impl HumanReadableReport {
 
 impl<'a> PanicReport<'a> {
     /// Constructs a new instance of [`PanicReport`].
-    pub fn new(panic_info: &'a PanicInfo, backtrace: Backtrace) -> Self {
+    pub fn new(panic_info: &'a PanicHookInfo, backtrace: Backtrace) -> Self {
         Self {
             panic_info,
             backtrace,

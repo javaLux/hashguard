@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.0] - 2024-11-08
+
+### Changed
+- the ``local`` subcommand now provides two options [`--file`, `--buffer`], the file path no longer needs to be specified via a separate argument
+  - `--file` calculate a hash sum from a local file
+  - `--buffer` calculate a hash sum from any given byte-buffer (e.g. String)
+- Refactoring
+- Update dependencies
+
+### Added
+- Now the following hash algorithms are available:
+  - SHA2-224
+  - SHA2-384
+<br>
+
 ## [2.0.5] - 2024-08-22
 
 ### Changed

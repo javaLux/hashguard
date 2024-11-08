@@ -1,23 +1,23 @@
 [package]
 name = "hashguard"
-version = "2.0.5"
+version = "3.0.0"
 edition = "2021"
-description = "Ensuring the integrity of files through hash sums"
+description = "Command-Line tool for ensuring the integrity of files using hash sums"
 authors = ["javaLux"]
 license = "MIT"
 repository = "https://github.com/javaLux/hashguard"
 readme = "README.md"
-keywords = ["cli", "hash", "verify", "file"]
-categories = ["command-line-utilities"]
+keywords = ["verify", "file", "cli", "tools", "hash", "cryptography"]
+categories = ["command-line-utilities", "development-tools", "cryptography"]
 rust-version = "1.74.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 better-panic = "0.3.0"
-chksum = "0.3.0"
+chksum = { version = "0.3.0", default-features = false, features = ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512"] }
 chrono = "0.4.38"
-clap = { version = "4.5.10", features = ["derive", "cargo", "string"] }
+clap = { version = "4.5.20", features = ["derive", "cargo", "string"] }
 color-eyre = "0.6.3"
 ctrlc = { version = "3.4.4", features = ["termination"] }
 indicatif = "0.17.8"
@@ -27,11 +27,16 @@ os_info = "3.8.2"
 output-coloring = "0.1.0"
 path-absolutize = "3.1.1"
 percent-encoding = "2.3.1"
-regex = "1.10.5"
-simple-home-dir = "0.4.0"
+regex = "1.11.1"
+simple-home-dir = "0.4.4"
 simplelog = "0.12.2"
 ureq = "2.10.0"
-url = "2.5.2"
+url = "2.5.3"
 
 [profile.release]
-opt-level = "z"
+# compiler optimizations for binary size
+opt-level = "s"
+# link time optimizations
+lto = true
+# strip either symbols or debuginfo from the final binary
+strip = true

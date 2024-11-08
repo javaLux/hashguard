@@ -150,6 +150,13 @@ pub mod unit_tests {
     }
 
     #[test]
+    fn test_invalid_url_3() {
+        use utils::is_valid_url;
+        let test_url = "www.example.com";
+        assert!(!is_valid_url(test_url));
+    }
+
+    #[test]
     fn test_extract_filename_from_url_1() {
         use utils::extract_file_name_from_url;
 

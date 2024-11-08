@@ -2,8 +2,7 @@ use chksum::{chksum, Hash};
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
-    fs::File,
-    path::Path,
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc,
@@ -21,8 +20,10 @@ use crate::{app, utils};
 pub enum Algorithm {
     MD5,
     SHA1,
+    SHA2_224,
     #[default]
     SHA2_256,
+    SHA2_384,
     SHA2_512,
 }
 
@@ -31,13 +32,15 @@ impl std::fmt::Display for Algorithm {
         match *self {
             Algorithm::MD5 => write!(f, "MD5"),
             Algorithm::SHA1 => write!(f, "SHA1"),
+            Algorithm::SHA2_224 => write!(f, "SHA2-224"),
             Algorithm::SHA2_256 => write!(f, "SHA2-256"),
+            Algorithm::SHA2_384 => write!(f, "SHA2-384"),
             Algorithm::SHA2_512 => write!(f, "SHA2-512"),
         }
     }
 }
 
-/// Calculates the hash sum for a given file using the specified hash algorithm and returns
+/// Calculates the hash sum from a given byte buffer using the specified hash algorithm and returns
 /// the result as a lowercase hexadecimal string.
 ///
 /// # Arguments
@@ -49,31 +52,36 @@ impl std::fmt::Display for Algorithm {
 ///
 /// Returns a `Result<String>` containing the lowercase hexadecimal representation of
 /// the calculated hash sum if the operation is successful. Otherwise, returns an error.
-pub fn get_hash_sum_as_lower_hex(path: &Path, algorithm: Algorithm) -> Result<String> {
-    log::debug!(
-        "Try to calculate {} hash sum for file: {}",
-        algorithm,
-        utils::get_absolute_path(path)
-    );
-    // create file object
-    let file_to_check = File::open(path)?;
+pub fn get_hash_sum_as_lower_hex(
+    data: Vec<u8>,
+    path: Option<PathBuf>,
+    algorithm: Algorithm,
+) -> Result<String> {
+    if let Some(path) = path {
+        log::debug!(
+            "Try to calculate {} hash sum for file: '{}'",
+            algorithm,
+            utils::get_absolute_path(&path)
+        );
+    } else {
+        log::debug!(
+            "Try to calculate {} hash sum for a given byte buffer",
+            algorithm,
+        );
+    }
 
     match algorithm {
-        Algorithm::MD5 => Ok(calculate_hash_sum::<chksum::MD5>(file_to_check)?.to_hex_lowercase()),
-        Algorithm::SHA1 => {
-            Ok(calculate_hash_sum::<chksum::SHA1>(file_to_check)?.to_hex_lowercase())
-        }
-        Algorithm::SHA2_256 => {
-            Ok(calculate_hash_sum::<chksum::SHA2_256>(file_to_check)?.to_hex_lowercase())
-        }
-        Algorithm::SHA2_512 => {
-            Ok(calculate_hash_sum::<chksum::SHA2_512>(file_to_check)?.to_hex_lowercase())
-        }
+        Algorithm::MD5 => Ok(calculate_hash_sum::<chksum::MD5>(data)?.to_hex_lowercase()),
+        Algorithm::SHA1 => Ok(calculate_hash_sum::<chksum::SHA1>(data)?.to_hex_lowercase()),
+        Algorithm::SHA2_224 => Ok(calculate_hash_sum::<chksum::SHA2_224>(data)?.to_hex_lowercase()),
+        Algorithm::SHA2_256 => Ok(calculate_hash_sum::<chksum::SHA2_256>(data)?.to_hex_lowercase()),
+        Algorithm::SHA2_384 => Ok(calculate_hash_sum::<chksum::SHA2_384>(data)?.to_hex_lowercase()),
+        Algorithm::SHA2_512 => Ok(calculate_hash_sum::<chksum::SHA2_512>(data)?.to_hex_lowercase()),
     }
 }
 
-/// Calculate a hash sum dependent on the given hash sum algorithm
-fn calculate_hash_sum<T>(data: File) -> Result<T::Digest>
+/// Calculate a hash sum from a given byte buffer, dependent on the given hash sum algorithm
+fn calculate_hash_sum<T>(data: Vec<u8>) -> Result<T::Digest>
 where
     T: Hash + Send,
     <T as chksum::Hash>::Digest: 'static + Send,

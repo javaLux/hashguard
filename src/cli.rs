@@ -22,9 +22,9 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    /// Download a file and calculate a hash sum or check with a specific hash sum
+    /// Download a file and calculate a hash sum
     Download(DownloadArgs),
-    /// Calculate a hash sum from a local file or check with a specific hash sum
+    /// Calculate a hash sum from a file or a byte buffer
     Local(LocalArgs),
 }
 
@@ -64,8 +64,21 @@ pub struct DownloadArgs {
 
 #[derive(Debug, Args)]
 pub struct LocalArgs {
-    /// Path to the file [required]
-    pub file_path: String,
+    #[arg(
+        short,
+        long,
+        conflicts_with = "buffer",
+        help = "Path to the file for which the hash sum will be calculated"
+    )]
+    pub file: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        conflicts_with = "file",
+        help = "Buffer (e.g. String) for which the hash sum will be calculated"
+    )]
+    pub buffer: Option<String>,
 
     /// Origin hash sum of the file [optional]
     pub hash_sum: Option<String>,

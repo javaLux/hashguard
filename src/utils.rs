@@ -22,7 +22,10 @@ const TIB: f64 = KIB * GIB;
 
 /// Processing of the command result
 pub fn processing_cmd_result(cmd_result: CommandResult) {
-    print_file_location(&cmd_result.file_location);
+    if let Some(file_location) = &cmd_result.file_location {
+        print_file_location(file_location);
+    }
+
     let calculated_hash_output = format!("Calculated hash sum: {}", cmd_result.calculated_hash_sum);
     log::debug!("{calculated_hash_output}");
 

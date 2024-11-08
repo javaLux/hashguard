@@ -5,7 +5,7 @@
 [![crates.io](https://img.shields.io/crates/v/hashguard.svg)](https://crates.io/crates/hashguard)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
-Ensuring the integrity of files through hash sums
+Command-Line tool for ensuring the integrity of files using hash sums
 
 ```
   ___ ___               .__      ________                       .___
@@ -23,7 +23,7 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 ![Hashguard-Demo](../assets/hashguard_demo.gif?raw=true)
 
 ## Features
-* **Download:**
+* ### Download-Command
   * Download a file and have a specific hash sum calculated depending on the selected hash algorithm
   * Or you can directly enter a known hash sum to compare it after the download.
     This allows you to check whether the file was changed during the download process
@@ -31,8 +31,19 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
     * If you use the download command, please enclose the URL in double quotation marks.
       Because by enclosing the URL in double quotation marks, you tell the shell to treat the entire string as a single argument, even if it contains spaces or other special characters. This can prevent errors and unexpected behavior in your shell.
   
-* **Local:**
-  * As described in the download feature, hash sums can also be calculated from local files or a known hash sum can be specified to compare them
+* ### Local-Command
+  * Allows to hash local files or any byte-buffer (futhermore you can also compare with a specific hash sum)
+  * **Options**
+    * _file_
+      * Calculate a hash sum from a file on your local system
+    * _buffer_
+      * Calculate a hash sum from any given byte buffer
+      * What means byte buffer?
+        * For example, you can calculate a hash sum from any text that is provided as a ``String``
+        * As described in the download command, please enclose the text to be hashed in double quotation marks. This prevents unexpected behavior in your shell.
+    * _Notice_
+      * You can only use one option per call. So either ``file`` or ``buffer``
+
 
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
@@ -83,73 +94,87 @@ cargo build --release
 * ``hashguard [OPTIONS] <COMMAND>``
 
 ### Command specific syntax
-* ``hashguard [OPTIONS] download <URL> [HASH_SUM] [OPTIONS]``
-* ``hashguard [OPTIONS] local <FILE_PATH> [HASH_SUM] [OPTIONS]``
+* ``hashguard [OPTIONS] download [OPTIONS] <URL> [HASH_SUM]``
+* ``hashguard [OPTIONS] local [OPTIONS] [HASH_SUM]``
 
 ### Usage Examples
-* Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:
-  ````shell
-  hashguard download "https://example.com/file.zip" a1b2c3d4e5f6
-  ````
 
-* Download a file and calculate a hash sum with a specific hash algorithm:
-  ````shell
-  hashguard download "https://example.com/file.zip" -a sha2-512
-  ````
+**Download-Command**
+  * Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:
+    ````shell
+    hashguard download "https://example.com/file.zip" a1b2c3d4e5f6
+    ````
 
-* Verify a local file with a hash sum using SHA-1:
-  ````shell
-  hashguard local /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
-  ````
+  * Download a file and calculate a hash sum with a specific hash algorithm:
+    ````shell
+    hashguard download "https://example.com/file.zip" -a sha2-512
+    ````
+  * Use a specific output directory for the downloaded file:
+    ````shell
+    hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -o /path/to/output_directory
+    ````
 
-* Calculate a hash sum from a local file with the default hash algorithm:
-  ````shell
-  hashguard local /path/to/local_file.txt
-  ````
+  * Use the --rename option to rename the file to be downloaded:
+    ````shell
+    hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -r "my_fancy_new_file.jpg"
+    ````
 
-* Use a specific output directory for the downloaded file:
-  ````shell
-  hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -o /path/to/output_directory
-  ````
+**Local-Command**
+  * Verify a local file with a hash sum using SHA-1:
+    ````shell
+    hashguard local -f /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
+    ````
 
-* Use the --rename option to rename the file to be downloaded:
-  ````shell
-  hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -r "my_fancy_new_file.jpg"
-  ````
+  * Calculate a hash sum from a given ``String``:
+    ````shell
+    hashguard local -b "Hello young Padawan"
+    ````
 
-* Enable the debug log level:
-  ````shell
-  hashguard -l debug download "https://example.com/file.zip" a1b2c3d4e5f6
-  ````
-  * In the event of an error, a full backtrace is displayed
-  * In addition, all log outputs are saved in a log file in the application's data directory.
-  * You can find out the application data directory with the [--version] command
-  * Please note that the application data directory is created as a hidden directory.
-    To see it, you must activate the property for displaying hidden files and folders for your operating system,
-    if you have not already done so
+  * Calculate a hash sum from a local file with the default hash algorithm:
+    ````shell
+    hashguard local -f /path/to/local_file.txt
+    ````
 
-* Get version info:
-  ````shell
-  hashguard --version
-  ````
+**Debug-Option**
+  * Enable the debug log level:
+    ````shell
+    hashguard -l debug download "https://example.com/file.zip" a1b2c3d4e5f6
+    ````
+    ````shell
+    hashguard -l debug local -f /path/to/local_file.txt
+    ````
+    * In the event of an error, a full backtrace is displayed
+    * In addition, all log outputs are saved in a log file in the application's data directory.
+    * You can find out the application data directory with the [--version] command
+    * Please note that the application data directory is created as a hidden directory.
+      To see it, you must activate the property for displaying hidden files and folders for your operating system,
+      if you have not already done so
 
-* Get general help:
-  ````shell
-  hashguard --help
-  ````
+**Common-Options**
+  * Get version info:
+    ````shell
+    hashguard --version
+    ````
 
-* Get help on a specific command:
-  ````shell
-  hashguard download --help
-  ````
-  ````shell
-  hashguard local --help
-  ````
+  * Get general help:
+    ````shell
+    hashguard --help
+    ````
+
+  * Get help on a specific command:
+    ````shell
+    hashguard download --help
+    ````
+    ````shell
+    hashguard local --help
+    ````
 
 ### Supported Hash Algorithms
 * MD5
 * SHA-1
+* SHA2-224
 * SHA2-256
+* SHA2-384
 * SHA2-512
 
 ## Notice
