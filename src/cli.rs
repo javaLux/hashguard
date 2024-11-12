@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Args, Parser, Subcommand};
 
 use crate::{
@@ -24,7 +26,7 @@ pub struct Cli {
 pub enum Commands {
     /// Download a file and calculate a hash sum
     Download(DownloadArgs),
-    /// Calculate a hash sum from a file or a byte buffer
+    /// Calculate a hash sum from a file/dir or a byte buffer
     Local(LocalArgs),
 }
 
@@ -51,7 +53,7 @@ pub struct DownloadArgs {
         help = "A custom path for the file to be saved (Default is the user download folder)",
         value_name = "DIR"
     )]
-    pub output: Option<String>,
+    pub output: Option<PathBuf>,
 
     #[arg(
         short,
@@ -68,15 +70,17 @@ pub struct LocalArgs {
         short,
         long,
         conflicts_with = "buffer",
-        help = "Path to the file for which the hash sum will be calculated"
+        help = "Path to a file/dir for which the hash sum will be calculated",
+        value_name = "PATH"
     )]
-    pub file: Option<String>,
+    pub path: Option<PathBuf>,
 
     #[arg(
         short,
         long,
-        conflicts_with = "file",
-        help = "Buffer (e.g. String) for which the hash sum will be calculated"
+        conflicts_with = "path",
+        help = "Buffer (e.g. String) for which the hash sum will be calculated",
+        value_name = "STRING"
     )]
     pub buffer: Option<String>,
 

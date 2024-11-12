@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use color_eyre::eyre::Result;
 
@@ -14,6 +14,7 @@ use crate::verify::{self, Algorithm};
 #[derive(Debug)]
 pub struct CommandResult {
     pub file_location: Option<PathBuf>,
+    pub buffer_size: Option<usize>,
     pub used_algorithm: Algorithm,
     pub calculated_hash_sum: String,
     pub hash_compare_result: Option<HashCompareResult>,
@@ -27,7 +28,7 @@ pub struct HashCompareResult {
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum CommandError {
-    FileNotExist(String),
+    PathNotExist(String),
     InvalidUrl,
     OutputTargetInvalid(String),
     RenameOptionInvalid(String),
@@ -38,12 +39,12 @@ impl Error for CommandError {}
 impl fmt::Display for CommandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CommandError::FileNotExist(file) => {
-                let msg = format!("The specified file '{}' does not exist", file);
+            CommandError::PathNotExist(path) => {
+                let msg = format!("The specified path '{}' does not exist", path);
                 write!(f, "{}", msg)
             }
             CommandError::InvalidUrl => {
-                write!(f, "The provided URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://www.example.com")
+                write!(f, "The provided URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://example.com")
             }
             CommandError::OutputTargetInvalid(target) => {
                 let msg = format!(
@@ -71,11 +72,11 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     let output_target = match output_target {
         Some(output_target) => {
             // only a existing directory is valid as an output target
-            let p = Path::new(&output_target);
-            if p.is_dir() {
-                p.to_path_buf()
+            if output_target.is_dir() {
+                output_target
             } else {
-                let command_err = CommandError::OutputTargetInvalid(utils::get_absolute_path(p));
+                let command_err =
+                    CommandError::OutputTargetInvalid(utils::get_absolute_path(&output_target));
                 return Err(color_eyre::eyre::eyre!(command_err.to_string()));
             }
         }
@@ -119,64 +120,35 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     // start the download
     let file_path = download::execute_download(download_properties)?;
 
-    // Reads the entire contents of the downloaded file into a bytes vector.
-    let data_to_hash = std::fs::read(&file_path)?;
-
-    let mut calculated_hash_sum =
-        verify::get_hash_sum_as_lower_hex(data_to_hash, Some(file_path.clone()), args.algorithm)?;
-
-    let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
-        if !verify::is_lower_hex(&origin_hash_sum) {
-            // convert the calculated hash sum to UpperHex
-            calculated_hash_sum = calculated_hash_sum
-                .chars()
-                .map(|c| c.to_uppercase().to_string())
-                .collect();
-        }
-
-        let is_file_modified = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
-        CommandResult {
-            file_location: Some(file_path),
-            used_algorithm: args.algorithm,
-            calculated_hash_sum,
-            hash_compare_result: Some(HashCompareResult {
-                is_file_modified,
-                origin_hash_sum,
-            }),
-        }
-    } else {
-        CommandResult {
-            file_location: Some(file_path),
-            used_algorithm: args.algorithm,
-            calculated_hash_sum,
-            hash_compare_result: None,
-        }
+    let local_args = LocalArgs {
+        path: Some(file_path),
+        buffer: None,
+        hash_sum: args.hash_sum,
+        algorithm: args.algorithm,
     };
-    utils::processing_cmd_result(cmd_result);
-    Ok(())
+
+    handle_local_cmd(local_args)
 }
 
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
-    let (data_to_hash, file_path) = if let Some(file) = args.file {
-        // check if the given file path point to an existing file
-        let file_path = PathBuf::from(file);
-        if file_path.exists() {
-            let data_to_hash = std::fs::read(file_path.clone())?;
-            (data_to_hash, Some(file_path))
+    let (mut calculated_hash_sum, file_location, buffer_size) = if let Some(path) = args.path {
+        // check if the given path point to an existing file or directory
+        if path.exists() {
+            let calculated_hash_sum = verify::get_file_hash(path.clone(), args.algorithm)?;
+            (calculated_hash_sum, Some(path), None)
         } else {
-            let command_err = CommandError::FileNotExist(utils::get_absolute_path(&file_path));
+            let command_err = CommandError::PathNotExist(utils::get_absolute_path(&path));
             return Err(color_eyre::eyre::eyre!(command_err.to_string()));
         }
     } else if let Some(some_text) = args.buffer {
-        let data_to_hash = some_text.as_bytes().to_vec();
-        (data_to_hash, None)
+        let buffer = some_text.as_bytes().to_vec();
+        let buffer_size = buffer.len();
+        let calculated_hash_sum = verify::get_buffer_hash(buffer, args.algorithm)?;
+        (calculated_hash_sum, None, Some(buffer_size))
     } else {
         return Ok(());
     };
-
-    let mut calculated_hash_sum =
-        verify::get_hash_sum_as_lower_hex(data_to_hash, file_path.clone(), args.algorithm)?;
 
     let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
         if !verify::is_lower_hex(&origin_hash_sum) {
@@ -189,7 +161,8 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
 
         let is_file_modified = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
         CommandResult {
-            file_location: file_path,
+            file_location,
+            buffer_size,
             used_algorithm: args.algorithm,
             calculated_hash_sum,
             hash_compare_result: Some(HashCompareResult {
@@ -199,7 +172,8 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
         }
     } else {
         CommandResult {
-            file_location: file_path,
+            file_location,
+            buffer_size,
             used_algorithm: args.algorithm,
             calculated_hash_sum,
             hash_compare_result: None,

@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate lazy_static;
 
-// make own custom modules available
 mod app;
 mod cli;
 mod color_templates;

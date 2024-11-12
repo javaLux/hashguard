@@ -32,17 +32,17 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
       Because by enclosing the URL in double quotation marks, you tell the shell to treat the entire string as a single argument, even if it contains spaces or other special characters. This can prevent errors and unexpected behavior in your shell.
   
 * ### Local-Command
-  * Allows to hash local files or any byte-buffer (futhermore you can also compare with a specific hash sum)
+  * Allows to hash local files, directories or any byte-buffer (futhermore you can also compare with a specific hash sum)
   * **Options**
-    * _file_
-      * Calculate a hash sum from a file on your local system
+    * _path_
+      * Calculate a hash sum from a file/dir
     * _buffer_
       * Calculate a hash sum from any given byte buffer
       * What means byte buffer?
         * For example, you can calculate a hash sum from any text that is provided as a ``String``
         * As described in the download command, please enclose the text to be hashed in double quotation marks. This prevents unexpected behavior in your shell.
-    * _Notice_
-      * You can only use one option per call. So either ``file`` or ``buffer``
+  * _Notice_
+    * You can only use one option per call. So either ``path`` or ``buffer``
 
 
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
@@ -122,7 +122,7 @@ cargo build --release
 **Local-Command**
   * Verify a local file with a hash sum using SHA-1:
     ````shell
-    hashguard local -f /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
+    hashguard local -p /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
     ````
 
   * Calculate a hash sum from a given ``String``:
@@ -130,9 +130,9 @@ cargo build --release
     hashguard local -b "Hello young Padawan"
     ````
 
-  * Calculate a hash sum from a local file with the default hash algorithm:
+  * Calculate a hash sum from a local directory with the default hash algorithm:
     ````shell
-    hashguard local -f /path/to/local_file.txt
+    hashguard local -p /path/to/test_dir
     ````
 
 **Debug-Option**
@@ -141,7 +141,7 @@ cargo build --release
     hashguard -l debug download "https://example.com/file.zip" a1b2c3d4e5f6
     ````
     ````shell
-    hashguard -l debug local -f /path/to/local_file.txt
+    hashguard -l debug local -p /path/to/local_file.txt
     ````
     * In the event of an error, a full backtrace is displayed
     * In addition, all log outputs are saved in a log file in the application's data directory.

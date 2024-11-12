@@ -23,10 +23,10 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_upper_hex() {
-        use verify::is_upper_hex;
-        let check_sum = "A92fAE5G42B9F444";
-        assert!(is_upper_hex(check_sum));
+    fn ne_is_lower_hex() {
+        use verify::is_lower_hex;
+        let check_sum = "A92FAE5G42B9F444";
+        assert!(!is_lower_hex(check_sum));
     }
 
     #[test]

@@ -8,32 +8,15 @@ pub const INFO_TEMPLATE: ColoredTemplate = ColoredTemplate {
     bg_color: Some(Color::Green),
     style: Style::Bold,
 };
-#[allow(dead_code)]
-pub const WARN_TEMPLATE: ColoredTemplate = ColoredTemplate {
-    ft_color: Color::White,
-    bg_color: Some(Color::Yellow),
-    style: Style::Bold,
-};
 pub const ERROR_TEMPLATE: ColoredTemplate = ColoredTemplate {
     ft_color: Color::White,
     bg_color: Some(Color::Red),
     style: Style::Bold,
 };
-#[allow(dead_code)]
-// These templates using no background color
-pub const INFO_TEMPLATE_NO_BG_COLOR: ColoredTemplate = ColoredTemplate {
-    ft_color: Color::Green,
-    bg_color: None,
-    style: Style::Bold,
-};
+
+// No background color used
 pub const WARN_TEMPLATE_NO_BG_COLOR: ColoredTemplate = ColoredTemplate {
     ft_color: Color::Yellow,
-    bg_color: None,
-    style: Style::Bold,
-};
-#[allow(dead_code)]
-pub const ERROR_TEMPLATE_NO_BG_COLOR: ColoredTemplate = ColoredTemplate {
-    ft_color: Color::Red,
     bg_color: None,
     style: Style::Bold,
 };

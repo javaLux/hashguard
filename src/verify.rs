@@ -1,4 +1,4 @@
-use chksum::{chksum, Hash};
+use chksum::{chksum, Chksumable, Hash};
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{
@@ -16,7 +16,7 @@ use color_eyre::eyre::Result;
 use crate::{app, utils};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-/// Indicate the supported Hash-Algorithm to build the file hash sum
+/// Supported hash algorithm for calculating the hash sum
 pub enum Algorithm {
     MD5,
     SHA1,
@@ -40,51 +40,84 @@ impl std::fmt::Display for Algorithm {
     }
 }
 
-/// Calculates the hash sum from a given byte buffer using the specified hash algorithm and returns
+/// Calculates the hash sum for a given file or directory using the specified hashing algorithm and returns
 /// the result as a lowercase hexadecimal string.
-///
-/// # Arguments
-///
-/// * `path`: The path to the file for which the hash sum needs to be calculated.
-/// * `algorithm`: The hash algorithm to use (MD5, SHA1, SHA2_256, or SHA2_512).
-///
-/// # Returns
-///
-/// Returns a `Result<String>` containing the lowercase hexadecimal representation of
-/// the calculated hash sum if the operation is successful. Otherwise, returns an error.
-pub fn get_hash_sum_as_lower_hex(
-    data: Vec<u8>,
-    path: Option<PathBuf>,
-    algorithm: Algorithm,
-) -> Result<String> {
-    if let Some(path) = path {
-        log::debug!(
-            "Try to calculate {} hash sum for file: '{}'",
-            algorithm,
-            utils::get_absolute_path(&path)
-        );
-    } else {
-        log::debug!(
-            "Try to calculate {} hash sum for a given byte buffer",
-            algorithm,
-        );
-    }
+pub fn get_file_hash(path: PathBuf, algorithm: Algorithm) -> Result<String> {
+    log::debug!(
+        "Try to calculate {} hash sum for file: '{}'",
+        algorithm,
+        utils::get_absolute_path(&path)
+    );
 
+    get_hash_sum_as_lower_hex(path, algorithm)
+}
+
+/// Calculates the hash sum for a given byte buffer using the specified hashing algorithm and returns
+/// the result as a lowercase hexadecimal string.
+pub fn get_buffer_hash(buffer: Vec<u8>, algorithm: Algorithm) -> Result<String> {
+    log::debug!(
+        "Try to calculate {} hash sum for a given byte buffer. Size: {} bytes",
+        algorithm,
+        buffer.len()
+    );
+
+    get_hash_sum_as_lower_hex(buffer, algorithm)
+}
+
+fn get_hash_sum_as_lower_hex<T>(data: T, algorithm: Algorithm) -> Result<String>
+where
+    T: Chksumable + 'static + Send,
+{
     match algorithm {
-        Algorithm::MD5 => Ok(calculate_hash_sum::<chksum::MD5>(data)?.to_hex_lowercase()),
-        Algorithm::SHA1 => Ok(calculate_hash_sum::<chksum::SHA1>(data)?.to_hex_lowercase()),
-        Algorithm::SHA2_224 => Ok(calculate_hash_sum::<chksum::SHA2_224>(data)?.to_hex_lowercase()),
-        Algorithm::SHA2_256 => Ok(calculate_hash_sum::<chksum::SHA2_256>(data)?.to_hex_lowercase()),
-        Algorithm::SHA2_384 => Ok(calculate_hash_sum::<chksum::SHA2_384>(data)?.to_hex_lowercase()),
-        Algorithm::SHA2_512 => Ok(calculate_hash_sum::<chksum::SHA2_512>(data)?.to_hex_lowercase()),
+        Algorithm::MD5 => Ok(calculate_hash_sum::<chksum::MD5, T>(data)?.to_hex_lowercase()),
+        Algorithm::SHA1 => Ok(calculate_hash_sum::<chksum::SHA1, T>(data)?.to_hex_lowercase()),
+        Algorithm::SHA2_224 => {
+            Ok(calculate_hash_sum::<chksum::SHA2_224, T>(data)?.to_hex_lowercase())
+        }
+        Algorithm::SHA2_256 => {
+            Ok(calculate_hash_sum::<chksum::SHA2_256, T>(data)?.to_hex_lowercase())
+        }
+        Algorithm::SHA2_384 => {
+            Ok(calculate_hash_sum::<chksum::SHA2_384, T>(data)?.to_hex_lowercase())
+        }
+        Algorithm::SHA2_512 => {
+            Ok(calculate_hash_sum::<chksum::SHA2_512, T>(data)?.to_hex_lowercase())
+        }
     }
 }
 
-/// Calculate a hash sum from a given byte buffer, dependent on the given hash sum algorithm
-fn calculate_hash_sum<T>(data: Vec<u8>) -> Result<T::Digest>
+/// Calculates the hash sum of a given data source, using a specified hashing algorithm.
+///
+/// # Parameters
+/// - `data`: The input data to be hashed. Must implement the [`Chksumable`] trait, enabling it to
+///   be processed by the hashing function.
+/// - `T`: The type of hashing algorithm to be used, which must implement the `Hash` trait. The
+///   output digest of this hash type is expected to be both `Send` and `'static`.
+///
+/// # Returns
+/// - `Result<T::Digest>`: If successful, returns the calculated digest of type `T::Digest`.
+///   Otherwise, returns an error if the hash calculation fails.
+///
+/// # Functionality
+/// - Initializes a spinner-style progress bar to indicate the calculation progress to the user.
+/// - Listens for a termination signal (e.g., `Ctrl+C`) in a background thread to handle user-initiated
+///   interruptions gracefully. If interrupted, the application will log the interruption and exit.
+/// - Spawns a thread to perform the actual hash calculation and send the result back to the main
+///   thread through a channel. Upon success, the spinner stops, and the hash digest is returned.
+/// - Ensures that all spawned threads are joined (completed) before returning the final result.
+///
+/// # Errors
+/// - If the hash calculation fails, logs the error and returns a descriptive error message.
+/// - If there is an issue with sending the hash result back to the main thread, an error will be
+///   logged and returned.
+///
+/// This function is designed for multi-threaded environments where lengthy I/O or CPU-bound operations
+/// benefit from non-blocking UI feedback (spinner) and graceful interruption handling.
+fn calculate_hash_sum<T, U>(data: U) -> Result<T::Digest>
 where
     T: Hash + Send,
     <T as chksum::Hash>::Digest: 'static + Send,
+    U: Chksumable + 'static + Send,
 {
     // Build a Spinner-Progress-Bar
     let spinner =
@@ -160,21 +193,9 @@ where
     Ok(receiver.try_recv()?)
 }
 
+/// Compares the given hash sums
 pub fn is_hash_equal(origin_hash_sum: &str, calculated_hash_sum: &str) -> bool {
-    // compare hash sums
     origin_hash_sum != calculated_hash_sum
-}
-
-#[allow(dead_code)]
-/// Checks if the given hash sum is a Upper-Hex number
-pub fn is_upper_hex(chk_sum: &str) -> bool {
-    for char in chk_sum.chars() {
-        if char.is_ascii_uppercase() {
-            return true;
-        }
-    }
-
-    false
 }
 
 /// Checks if the given hash sum is a Lower-Hex number

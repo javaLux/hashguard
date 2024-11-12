@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::{
     color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
-    commands::CommandResult,
+    commands::{CommandResult, HashCompareResult},
     os_specifics::{self, OS},
     verify::Algorithm,
 };
@@ -22,67 +22,63 @@ const TIB: f64 = KIB * GIB;
 
 /// Processing of the command result
 pub fn processing_cmd_result(cmd_result: CommandResult) {
-    if let Some(file_location) = &cmd_result.file_location {
-        print_file_location(file_location);
-    }
+    let hash_source = match cmd_result.file_location {
+        Some(file_location) => get_absolute_path(&file_location),
+        None => match cmd_result.buffer_size {
+            Some(size) => format!("Buffer of size {} byte(s)", size),
+            None => "Unknown".to_string(),
+        },
+    };
 
-    let calculated_hash_output = format!("Calculated hash sum: {}", cmd_result.calculated_hash_sum);
-    log::debug!("{calculated_hash_output}");
-
-    match cmd_result.hash_compare_result {
-        Some(result) => {
-            print_verify_result(
-                &result.origin_hash_sum,
-                &cmd_result.calculated_hash_sum,
-                cmd_result.used_algorithm,
-                result.is_file_modified,
-            );
-        }
-        None => {
-            println!("{calculated_hash_output}");
-            println!(
-                "\n- Used hash algorithm: {}",
-                WARN_TEMPLATE_NO_BG_COLOR.output(cmd_result.used_algorithm)
-            );
-        }
-    }
-}
-
-fn print_verify_result(
-    origin_hash_sum: &str,
-    calculated_hash_sum: &str,
-    used_algorithm: Algorithm,
-    is_file_modified: bool,
-) {
-    let hash_sum_result = format!(
-        "Origin hash sum    : {}\nCalculated hash sum: {}",
-        origin_hash_sum, calculated_hash_sum
+    println!(
+        "\n{}       : {}",
+        WARN_TEMPLATE_NO_BG_COLOR.output("Input source"),
+        hash_source
     );
 
-    println!("{}", hash_sum_result);
+    print_hash_result(
+        cmd_result.hash_compare_result,
+        cmd_result.used_algorithm,
+        &cmd_result.calculated_hash_sum,
+    );
+}
 
-    if is_file_modified {
-        println!(
-            "\n{} - Used hash algorithm: {}",
-            ERROR_TEMPLATE.output("Hash sums DO NOT match"),
-            WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
-        );
+/// Print and log the hash result
+fn print_hash_result(
+    hash_to_compare: Option<HashCompareResult>,
+    used_algorithm: Algorithm,
+    calculated_hash_sum: &str,
+) {
+    let calculated_hash_sum = format!("Calculated hash sum: {}", calculated_hash_sum);
+
+    log::debug!("{calculated_hash_sum}");
+    println!("{calculated_hash_sum}");
+
+    if let Some(hash_to_compare) = hash_to_compare {
+        let origin_hash = format!("Origin hash sum    : {}", hash_to_compare.origin_hash_sum);
+
+        log::debug!("{origin_hash}");
+        println!("{origin_hash}");
+
+        if hash_to_compare.is_file_modified {
+            println!(
+                "\n{} - Used hash algorithm: {}",
+                ERROR_TEMPLATE.output("Hash sums DO NOT match"),
+                WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
+            );
+        } else {
+            println!(
+                "\n{} - Used hash algorithm: {}",
+                INFO_TEMPLATE.output("Hash sums match"),
+                WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
+            );
+        }
     } else {
         println!(
-            "\n{} - Used hash algorithm: {}",
-            INFO_TEMPLATE.output("Hash sums match"),
+            "\n- Used hash algorithm: {}",
             WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
         );
     }
-}
-
-/// Prints the passed path as an absolute path, otherwise the passed path
-pub fn print_file_location(path: &Path) {
-    println!(
-        "\n{}      : {}",
-        WARN_TEMPLATE_NO_BG_COLOR.output("File location"),
-        get_absolute_path(path)
-    );
 }
 
 /// Gives you the correct time unit dependent on the remaining seconds.
@@ -110,7 +106,7 @@ pub fn calc_duration(seconds: u64) -> String {
     }
 }
 
-/// Function to check if a given URL is valid and has a path.
+/// Function to check if a given URL is valid or not.
 /// # Arguments
 ///
 /// url = The url to be parsed ("http://example.com")

@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "3.0.0"
+version = "3.0.1"
 edition = "2021"
 description = "Command-Line tool for ensuring the integrity of files using hash sums"
 authors = ["javaLux"]
@@ -12,7 +12,6 @@ categories = ["command-line-utilities", "development-tools", "cryptography"]
 rust-version = "1.74.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 better-panic = "0.3.0"
 chksum = { version = "0.3.0", default-features = false, features = ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512"] }
@@ -36,7 +35,7 @@ url = "2.5.3"
 [profile.release]
 # compiler optimizations for binary size
 opt-level = "s"
-# link time optimizations
+# link optimizations -> causes a longer link time but produce better optimize code
 lto = true
 # strip either symbols or debuginfo from the final binary
 strip = true

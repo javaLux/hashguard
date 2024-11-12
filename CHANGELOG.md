@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.1] - 2024-12-08
+
+### Changed
+- ``local`` subcommand
+  - option `--file` was renamed to `--path`
+  - now you use a path pointing to a file or a directory and calculate a hash sum
+- Refactoring
+<br>
+
 ## [3.0.0] - 2024-11-08
 
 ### Changed
