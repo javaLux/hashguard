@@ -55,12 +55,15 @@ fn print_hash_result(
     println!("{calculated_hash_sum}");
 
     if let Some(hash_to_compare) = hash_to_compare {
-        let origin_hash = format!("Origin hash sum    : {}", hash_to_compare.origin_hash_sum);
+        let origin_hash = format!(
+            "Origin hash sum    : {}",
+            hash_to_compare.origin_hash_sum.to_ascii_lowercase()
+        );
 
         log::debug!("{origin_hash}");
         println!("{origin_hash}");
 
-        if hash_to_compare.is_file_modified {
+        if !hash_to_compare.is_hash_equal {
             println!(
                 "\n{} - Used hash algorithm: {}",
                 ERROR_TEMPLATE.output("Hash sums DO NOT match"),
@@ -128,7 +131,7 @@ pub fn is_valid_url(url: &str) -> bool {
     match Url::parse(url) {
         Ok(url) => {
             !url.scheme().is_empty()
-                && (url.scheme() == "http" || url.scheme() == "https")
+                && (matches!(url.scheme(), "http" | "https"))
                 && url.has_host()
                 && !url.path().is_empty()
         }

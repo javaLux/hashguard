@@ -105,6 +105,7 @@ pub fn initialize_logging(log_level: Option<LogLevel>) -> Result<()> {
                 APP_NAME,
                 env!("CARGO_PKG_VERSION")
             );
+            log::debug!("Running on => {}", os_info::get())
         }
     }
 

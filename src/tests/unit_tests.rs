@@ -16,17 +16,60 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_lower_hex() {
-        use verify::is_lower_hex;
-        let check_sum = "c92fae5e42b9aecf444a66c8ec563c652f60b1e231dfdd33e";
-        assert!(is_lower_hex(check_sum));
+    fn test_is_lower_hex_1() {
+        let hash = "72736fab67d8efab12";
+        assert!(verify::is_lower_hex(hash))
     }
 
     #[test]
-    fn ne_is_lower_hex() {
-        use verify::is_lower_hex;
-        let check_sum = "A92FAE5G42B9F444";
-        assert!(!is_lower_hex(check_sum));
+    fn test_is_lower_hex_2() {
+        let hash = "abcdef";
+        assert!(verify::is_lower_hex(hash))
+    }
+
+    #[test]
+    fn test_is_upper_hex_1() {
+        let hash = "72736FAB67D8EFAB12";
+        assert!(!verify::is_lower_hex(hash))
+    }
+
+    #[test]
+    fn test_is_upper_hex_2() {
+        let hash = "ABCDEF";
+        assert!(!verify::is_lower_hex(hash))
+    }
+
+    #[test]
+    fn test_is_valid_hash() {
+        let hash = "72736FAB67D8EFAB12";
+        assert!(verify::is_hash_valid(hash))
+    }
+
+    #[test]
+    fn test_is_invalid_hash_1() {
+        let hash = "tghrz768jut";
+        assert!(!verify::is_hash_valid(hash))
+    }
+
+    #[test]
+    fn test_is_invalid_hash_2() {
+        assert!(!verify::is_hash_valid("  \t"))
+    }
+
+    #[test]
+    fn test_is_hash_equal() {
+        assert!(verify::is_hash_equal(
+            "72736fab67d8efab12",
+            "72736fab67d8efab12"
+        ))
+    }
+
+    #[test]
+    fn test_is_hash_not_equal() {
+        assert!(!verify::is_hash_equal(
+            "72736fab67d8ef12",
+            "72736fab67d8efab12"
+        ))
     }
 
     #[test]

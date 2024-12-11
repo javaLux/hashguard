@@ -193,18 +193,22 @@ where
     Ok(receiver.try_recv()?)
 }
 
-/// Compares the given hash sums
+/// Compares the given hashes
 pub fn is_hash_equal(origin_hash_sum: &str, calculated_hash_sum: &str) -> bool {
-    origin_hash_sum != calculated_hash_sum
+    origin_hash_sum.to_ascii_lowercase() == calculated_hash_sum.to_ascii_lowercase()
 }
 
-/// Checks if the given hash sum is a Lower-Hex number
-pub fn is_lower_hex(chk_sum: &str) -> bool {
-    for char in chk_sum.chars() {
-        if char.is_ascii_lowercase() {
-            return true;
-        }
-    }
+#[allow(dead_code)]
+/// Checks if the given hash is a valid Lower-Hex digit
+pub fn is_lower_hex(hash: &str) -> bool {
+    !hash.trim().is_empty() && hash.chars().all(|c| matches!(c, 'a'..='f' | '0'..='9'))
+}
 
-    false
+/// Verifies that every character in the string is a valid hexadecimal digit.
+/// Valid hexadecimal (hex) digits are characters that represent numbers in base-16 (hexadecimal) notation.
+/// In base-16, digits range from 0 to 15, and these are represented as follows:<br>
+/// Decimal 0-9: Represented directly as 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.<br>
+/// Decimal 10-15: Represented as letters A, B, C, D, E, F (uppercase) or a, b, c, d, e, f (lowercase).
+pub fn is_hash_valid(hash: &str) -> bool {
+    !hash.trim().is_empty() && hash.chars().all(|c| c.is_ascii_hexdigit())
 }

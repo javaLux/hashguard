@@ -22,7 +22,7 @@ pub struct CommandResult {
 
 #[derive(Debug)]
 pub struct HashCompareResult {
-    pub is_file_modified: bool,
+    pub is_hash_equal: bool,
     pub origin_hash_sum: String,
 }
 
@@ -30,6 +30,7 @@ pub struct HashCompareResult {
 pub enum CommandError {
     PathNotExist(String),
     InvalidUrl,
+    InvalidHashSum,
     OutputTargetInvalid(String),
     RenameOptionInvalid(String),
 }
@@ -41,24 +42,30 @@ impl fmt::Display for CommandError {
         match self {
             CommandError::PathNotExist(path) => {
                 let msg = format!("The specified path '{}' does not exist", path);
-                write!(f, "{}", msg)
+                write!(f, "Command error => {}", msg)
             }
             CommandError::InvalidUrl => {
-                write!(f, "The provided URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://example.com")
+                write!(f, "Command error => The specified URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://example.com")
+            }
+            CommandError::InvalidHashSum => {
+                write!(
+                    f,
+                    "Command error => The specified hash sum is not a valid hexadecimal digit"
+                )
             }
             CommandError::OutputTargetInvalid(target) => {
                 let msg = format!(
                     "The specified output target '{}' does not exist or is not a directory",
                     target
                 );
-                write!(f, "{}", msg)
+                write!(f, "Command error => {}", msg)
             }
             CommandError::RenameOptionInvalid(filename_err) => {
                 let msg = format!(
                     "Option [-r, --rename] contains an invalid filename - {}",
                     filename_err
                 );
-                write!(f, "{}", msg)
+                write!(f, "Command error => {}", msg)
             }
         }
     }
@@ -77,7 +84,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
             } else {
                 let command_err =
                     CommandError::OutputTargetInvalid(utils::get_absolute_path(&output_target));
-                return Err(color_eyre::eyre::eyre!(command_err.to_string()));
+                return Err(color_eyre::eyre::eyre!(command_err));
             }
         }
         // If no output directory was specified
@@ -92,7 +99,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
     if !utils::is_valid_url(download_url) {
         let command_err = CommandError::InvalidUrl;
-        return Err(color_eyre::eyre::eyre!(command_err.to_string()));
+        return Err(color_eyre::eyre::eyre!(command_err));
     }
 
     let default_file_name = match args.rename {
@@ -102,12 +109,19 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
                 Ok(_) => Some(file_name),
                 Err(validate_err) => {
                     let command_err = CommandError::RenameOptionInvalid(validate_err.to_string());
-                    return Err(color_eyre::eyre::eyre!(command_err.to_string()));
+                    return Err(color_eyre::eyre::eyre!(command_err));
                 }
             }
         }
         None => None,
     };
+
+    // Check if the provided hash is a valid hex digit
+    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
+        if !verify::is_hash_valid(origin_hash_sum) {
+            return Err(color_eyre::eyre::eyre!(CommandError::InvalidHashSum));
+        }
+    }
 
     // build the required DownloadProperties
     let download_properties = DownloadProperties {
@@ -132,14 +146,14 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
-    let (mut calculated_hash_sum, file_location, buffer_size) = if let Some(path) = args.path {
+    let (calculated_hash_sum, file_location, buffer_size) = if let Some(path) = args.path {
         // check if the given path point to an existing file or directory
         if path.exists() {
             let calculated_hash_sum = verify::get_file_hash(path.clone(), args.algorithm)?;
             (calculated_hash_sum, Some(path), None)
         } else {
             let command_err = CommandError::PathNotExist(utils::get_absolute_path(&path));
-            return Err(color_eyre::eyre::eyre!(command_err.to_string()));
+            return Err(color_eyre::eyre::eyre!(command_err));
         }
     } else if let Some(some_text) = args.buffer {
         let buffer = some_text.as_bytes().to_vec();
@@ -151,22 +165,19 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
     };
 
     let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
-        if !verify::is_lower_hex(&origin_hash_sum) {
-            // convert the calculated hash sum to UpperHex
-            calculated_hash_sum = calculated_hash_sum
-                .chars()
-                .map(|c| c.to_uppercase().to_string())
-                .collect();
+        // Check if the provided hash is a valid hex digit
+        if !verify::is_hash_valid(&origin_hash_sum) {
+            return Err(color_eyre::eyre::eyre!(CommandError::InvalidHashSum));
         }
 
-        let is_file_modified = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
+        let is_hash_equal = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
         CommandResult {
             file_location,
             buffer_size,
             used_algorithm: args.algorithm,
             calculated_hash_sum,
             hash_compare_result: Some(HashCompareResult {
-                is_file_modified,
+                is_hash_equal,
                 origin_hash_sum,
             }),
         }

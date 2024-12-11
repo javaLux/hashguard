@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.2] - 2024-12-11
+
+- optimization binary size => disable dependency default features
+- Bug fixing when comparing hash sums
+
+### Changed
+- Improve error messages
+- Update dependencies
+
+### Added
+- Validation of a given hash sum, only a valid hexadecimal digit is accepted for the comparison
+
 ## [3.0.1] - 2024-12-08
 
 ### Changed
