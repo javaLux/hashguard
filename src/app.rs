@@ -1,12 +1,6 @@
 use clap::ValueEnum;
 use color_eyre::eyre::Result;
-use std::{
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::path::PathBuf;
 
 use crate::{panic_handling::PanicReport, utils};
 
@@ -17,11 +11,6 @@ pub const APP_INTERRUPTED_MSG: &str = concat!(
     env!("CARGO_CRATE_NAME"),
     " was interrupted by user..."
 );
-
-// App state -> controlled by the CtrlC-Handler
-lazy_static! {
-    pub static ref APP_SHOULD_RUN: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
-}
 
 /// Represents the possible application log level
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
@@ -112,14 +101,26 @@ pub fn initialize_logging(log_level: Option<LogLevel>) -> Result<()> {
     Ok(())
 }
 
-/// Register the application signal handler for Ctrl-C
+/// Register the application signal handler.<br>
+/// Listens for a termination signal (e.g., `Ctrl+C`) in a background thread to handle user-initiated<br>
+/// interruptions gracefully. If interrupted, the application will log the interruption and exit.
 pub fn set_ctrl_c_handler() -> Result<()> {
-    let ctr_c_command = || APP_SHOULD_RUN.store(false, Ordering::SeqCst);
-    match ctrlc::set_handler(ctr_c_command) {
+    let exit_cmd = || {
+        log::debug!("{} was interrupted by user...", APP_NAME);
+        println!("{}", APP_INTERRUPTED_MSG);
+        // terminate app
+        std::process::exit(1);
+    };
+
+    match ctrlc::set_handler(exit_cmd) {
         Ok(_) => Ok(()),
-        Err(handler_err) => Err(color_eyre::eyre::eyre!(handler_err)),
+        Err(handler_err) => Err(color_eyre::eyre::eyre!(format!(
+            "Failed to set Ctrl-C signal handler - {:?}",
+            handler_err
+        ))),
     }
 }
+
 /// Initializes the verbosity level for the Rust log output based on the specified LogLevel.
 ///
 /// If the provided log level is `LogLevel::Debug`, this function sets the environment

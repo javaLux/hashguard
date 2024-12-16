@@ -6,7 +6,6 @@ use std::{
     fs::File,
     io::{BufWriter, Read, Write},
     path::PathBuf,
-    sync::atomic::Ordering,
     time::{Duration, Instant},
 };
 
@@ -221,11 +220,6 @@ fn make_streamed_download(
     let start = Instant::now();
 
     let download_result = loop {
-        // check the app state -> if ctrl_c was pressed, abort the download
-        if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
-            break Err(DownloadError::DownloadInterrupted);
-        }
-
         // try to read from the response body
         let read_result = body_reader.read(&mut buffer);
 
@@ -317,11 +311,6 @@ fn make_known_size_download(
     let start = Instant::now();
 
     let download_result = loop {
-        // check the app state -> if ctrl_c was pressed, abort the download
-        if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
-            break Err(DownloadError::DownloadInterrupted);
-        }
-
         // try to read from the response body
         let read_result = body_reader.read(&mut buffer);
 

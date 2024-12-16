@@ -6,7 +6,6 @@ use color_eyre::eyre::Result;
 
 use crate::cli::{DownloadArgs, LocalArgs};
 use crate::download::{self, DownloadProperties};
-use crate::filename_handling;
 use crate::os_specifics;
 use crate::utils;
 use crate::verify::{self, Algorithm};
@@ -26,13 +25,14 @@ pub struct HashCompareResult {
     pub origin_hash_sum: String,
 }
 
+// Represents possible cli command errors
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum CommandError {
     PathNotExist(String),
     InvalidUrl,
     InvalidHashSum,
     OutputTargetInvalid(String),
-    RenameOptionInvalid(String),
+    InvalidFilename(String),
 }
 
 impl Error for CommandError {}
@@ -42,7 +42,7 @@ impl fmt::Display for CommandError {
         match self {
             CommandError::PathNotExist(path) => {
                 let msg = format!("The specified path '{}' does not exist", path);
-                write!(f, "Command error => {}", msg)
+                write!(f, "{}", msg)
             }
             CommandError::InvalidUrl => {
                 write!(f, "Command error => The specified URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://example.com")
@@ -55,17 +55,14 @@ impl fmt::Display for CommandError {
             }
             CommandError::OutputTargetInvalid(target) => {
                 let msg = format!(
-                    "The specified output target '{}' does not exist or is not a directory",
+                    "Invalid target - '{}' does not exist or is not a directory",
                     target
                 );
-                write!(f, "Command error => {}", msg)
+                write!(f, "{}", msg)
             }
-            CommandError::RenameOptionInvalid(filename_err) => {
-                let msg = format!(
-                    "Option [-r, --rename] contains an invalid filename - {}",
-                    filename_err
-                );
-                write!(f, "Command error => {}", msg)
+            CommandError::InvalidFilename(filename_err) => {
+                let msg = format!("Invalid filename - {}", filename_err);
+                write!(f, "{}", msg)
             }
         }
     }
@@ -77,16 +74,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     let output_target = args.output;
 
     let output_target = match output_target {
-        Some(output_target) => {
-            // only a existing directory is valid as an output target
-            if output_target.is_dir() {
-                output_target
-            } else {
-                let command_err =
-                    CommandError::OutputTargetInvalid(utils::get_absolute_path(&output_target));
-                return Err(color_eyre::eyre::eyre!(command_err));
-            }
-        }
+        Some(output_target) => output_target,
         // If no output directory was specified
         None => {
             // try to get the default user download folder dependent on the underlying OS
@@ -102,20 +90,6 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
         return Err(color_eyre::eyre::eyre!(command_err));
     }
 
-    let default_file_name = match args.rename {
-        Some(file_name) => {
-            // validate given file name
-            match filename_handling::validate_filename(&os_type, &file_name) {
-                Ok(_) => Some(file_name),
-                Err(validate_err) => {
-                    let command_err = CommandError::RenameOptionInvalid(validate_err.to_string());
-                    return Err(color_eyre::eyre::eyre!(command_err));
-                }
-            }
-        }
-        None => None,
-    };
-
     // Check if the provided hash is a valid hex digit
     if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
         if !verify::is_hash_valid(origin_hash_sum) {
@@ -127,7 +101,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     let download_properties = DownloadProperties {
         url: download_url.to_string(),
         output_target,
-        default_file_name,
+        default_file_name: args.rename,
         os_type,
     };
 
@@ -147,14 +121,9 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
     let (calculated_hash_sum, file_location, buffer_size) = if let Some(path) = args.path {
-        // check if the given path point to an existing file or directory
-        if path.exists() {
-            let calculated_hash_sum = verify::get_file_hash(path.clone(), args.algorithm)?;
-            (calculated_hash_sum, Some(path), None)
-        } else {
-            let command_err = CommandError::PathNotExist(utils::get_absolute_path(&path));
-            return Err(color_eyre::eyre::eyre!(command_err));
-        }
+        // calculate the file hash
+        let calculated_hash_sum = verify::get_file_hash(path.clone(), args.algorithm)?;
+        (calculated_hash_sum, Some(path), None)
     } else if let Some(some_text) = args.buffer {
         let buffer = some_text.as_bytes().to_vec();
         let buffer_size = buffer.len();

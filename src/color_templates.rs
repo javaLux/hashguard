@@ -1,8 +1,6 @@
 use output_coloring::*;
 
 /// The templates for colored terminal output
-
-// These templates using a certain background color
 pub const INFO_TEMPLATE: ColoredTemplate = ColoredTemplate {
     ft_color: Color::White,
     bg_color: Some(Color::Green),

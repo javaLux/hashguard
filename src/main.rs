@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 mod app;
 mod cli;
 mod color_templates;
@@ -18,18 +15,17 @@ use color_eyre::eyre::Result;
 use color_templates::*;
 
 fn main() -> Result<()> {
-    // Parse the given CLI-Arguments
-    let args = cli::Cli::parse();
-
-    app::initialize_logging(args.log_level)?;
-    app::initialize_panic_hook(args.log_level)?;
-    app::set_ctrl_c_handler()?;
-
     // get the underlying os type
     let os_type = os_specifics::get_os();
 
     match os_type {
         Some(os) => {
+            // Parse the given CLI-Arguments
+            let args = cli::Cli::parse();
+
+            app::initialize_logging(args.log_level)?;
+            app::initialize_panic_hook(args.log_level)?;
+            app::set_ctrl_c_handler()?;
             // check which command is given (download or local)
             match args.command {
                 cli::Commands::Download(args) => commands::handle_download_cmd(args, os)?,

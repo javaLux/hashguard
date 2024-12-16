@@ -1,19 +1,11 @@
 use chksum::{chksum, Chksumable, Hash};
 use clap::ValueEnum;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
-    },
-    thread,
-    time::Duration,
-};
+use std::{path::PathBuf, thread, time::Duration};
 
 use color_eyre::eyre::Result;
 
-use crate::{app, utils};
+use crate::utils;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 /// Supported hash algorithm for calculating the hash sum
@@ -100,8 +92,6 @@ where
 ///
 /// # Functionality
 /// - Initializes a spinner-style progress bar to indicate the calculation progress to the user.
-/// - Listens for a termination signal (e.g., `Ctrl+C`) in a background thread to handle user-initiated
-///   interruptions gracefully. If interrupted, the application will log the interruption and exit.
 /// - Spawns a thread to perform the actual hash calculation and send the result back to the main
 ///   thread through a channel. Upon success, the spinner stops, and the hash digest is returned.
 /// - Ensures that all spawned threads are joined (completed) before returning the final result.
@@ -127,40 +117,20 @@ where
     spinner.set_style(
         ProgressStyle::default_spinner()
             .tick_strings(&utils::BOUNCING_BAR)
-            .template("{spinner:.white} {msg}")?,
+            .template("{spinner:.white} {msg}")
+            .unwrap_or(ProgressStyle::default_spinner()),
     );
 
     // set spinner tick every 100ms
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    let is_calculating_checksum = Arc::new(AtomicBool::new(true));
-
-    let is_calculating_checksum_clone = is_calculating_checksum.clone();
-
-    // thread to listen on the app state -> if ctrl_c was pressed, quit the app
-    let listen_crl_c_thread = thread::spawn(move || {
-        while is_calculating_checksum.load(Ordering::SeqCst) {
-            // listen to the app state
-            if !app::APP_SHOULD_RUN.load(Ordering::SeqCst) {
-                log::debug!("{} was interrupted by user...", app::APP_NAME);
-                println!("{}", app::APP_INTERRUPTED_MSG);
-                // terminate app
-                std::process::exit(1);
-            }
-        }
-    });
-
     // use thread-safe Channels to transfer the Hash sum to the Main-Thread
-    let (sender, receiver) = mpsc::channel();
+    let (sender, receiver) = std::sync::mpsc::channel();
 
     let hash_sum_thread = thread::spawn(move || -> Result<()> {
         let digest = match chksum::<T>(data) {
-            Ok(digest) => {
-                is_calculating_checksum_clone.store(false, Ordering::SeqCst);
-                digest
-            }
+            Ok(digest) => digest,
             Err(chksum_err) => {
-                is_calculating_checksum_clone.store(false, Ordering::SeqCst);
                 spinner.finish_and_clear();
                 log::error!(
                     "{}",
@@ -180,10 +150,6 @@ where
     });
 
     // block the main thread until the associated threads are finished
-    listen_crl_c_thread
-        .join()
-        .expect("Couldn't join on the 'listen_ctrl_c' thread");
-
     let hash_sum_result = hash_sum_thread
         .join()
         .expect("Couldn't join on the 'hash sum' thread");

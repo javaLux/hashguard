@@ -4,17 +4,31 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.3] - 2024-12-16
+- Performance optimizations
+- Refactoring
+- Update dependencies
+
+### Changed
+- Validation improvements of download command options
+  - filename validation => option `[-r, --rename]`
+  - output target validation => option `[-o, --output]`
+<br>
+
+
 ## [3.0.2] - 2024-12-11
 
-- optimization binary size => disable dependency default features
+- Optimized binary size => disable dependency default features
 - Bug fixing when comparing hash sums
+- Update dependencies
 
 ### Changed
 - Improve error messages
-- Update dependencies
 
 ### Added
 - Validation of a given hash sum, only a valid hexadecimal digit is accepted for the comparison
+<br>
+
 
 ## [3.0.1] - 2024-12-08
 
@@ -25,14 +39,16 @@ All notable changes to this project will be documented in this file. The format 
 - Refactoring
 <br>
 
+
 ## [3.0.0] - 2024-11-08
+
+- Update dependencies
 
 ### Changed
 - the ``local`` subcommand now provides two options [`--file`, `--buffer`], the file path no longer needs to be specified via a separate argument
   - `--file` calculate a hash sum from a local file
   - `--buffer` calculate a hash sum from any given byte-buffer (e.g. String)
 - Refactoring
-- Update dependencies
 
 ### Added
 - Now the following hash algorithms are available:
@@ -40,55 +56,68 @@ All notable changes to this project will be documented in this file. The format 
   - SHA2-384
 <br>
 
+
 ## [2.0.5] - 2024-08-22
+
+- Refactoring
+- Update dependencies
 
 ### Changed
 - Improve user and log error messages
 - Now ``chunked`` file downloads are supported
-- Refactoring
-- Update dependencies
 <br>
+
 
 ## [2.0.4] - 2024-06-11
 
+- Update dependencies
+
 ### Changed
 - Improvement of the URL validation for the ``download`` command, e.g. only the protocols ``http`` and ``https`` are supported
-- Update dependencies
 <br>
 
+
 ## [2.0.3] - 2024-05-13
+
+- Refactoring
+- Update dependencies
 
 ### Fixed
 - Bug fix for extracting filename from a specified URL if the ``Content-Disposition`` header not present
   - In the case that the specified URL contains query parameters (URL parameters) the filename could not extract correctly
   - This bug is fixed in this version
-
-### Changed
-- Refactoring
-- Update dependencies
 <br>
 
+
 ## [2.0.2] - 2024-05-02
+
+- Refactoring
+- Update dependencies
+
 ### Added
 - Add a Signal handler for ``Ctrl_C``
 
 ### Changed
 - Improve user error messages
 - Improve debug log messages
-- Refactoring
-- Update dependencies
 <br>
 
+
 ## [2.0.1] - 2024-04-23
+
+- Update dependencies
+
 ### Security
 - Bump rustls from 0.22.2 to 0.22.4
   - ``rustls::ConnectionCommon::complete_io`` could fall into an infinite loop based on network input.
-
-### Changed
-- Update dependencies
 <br>
 
+
 ## [2.0.0] - 2024-03-02
+
+- Update dependencies
+- Refactoring
+
 ### Added
 - Implemented a panic handler to create a `Crash-Report.log` file in case of application crashes. This file contains information about the OS metadata and the crash, aiding in debugging and issue resolution.
 
@@ -102,14 +131,10 @@ All notable changes to this project will be documented in this file. The format 
 - Bug fix that sometimes the correct file name could not be extracted when executing the ``Download`` command
   - Correctly extract filenames from redirect URLs
   - using the ``Content-Disposition`` HTTP-Header to extract filename
-
-### Changed
-- Update dependencies
-- Refactoring
 <br>
 
+
 ## [1.0.8] - 2023-12-12
-### Added
 
 ### Fixed
 - Bug fix that the absolute path was not displayed correctly under Windows
@@ -119,15 +144,19 @@ All notable changes to this project will be documented in this file. The format 
 - improvement of error messages
 <br>
 
+
 ## [1.0.7] - 2023-12-10
-### Changed
+
 - Update dependencies
 - Refactoring
+
+### Changed
 - Improvement of the code base
 - Improvement of the user messages
 - Improvement of error handling - use [color-eyre](https://crates.io/crates/color-eyre) as error report handler
 - Add a new CLI-Option [-r, --rename] for the ``download`` command -> you can now specify a new file name for the file to be downloaded
 <br>
+
 
 ## [Unreleased]
 

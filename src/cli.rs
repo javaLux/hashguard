@@ -4,6 +4,7 @@ use clap::{Args, Parser, Subcommand};
 
 use crate::{
     app::{version, LogLevel},
+    commands, filename_handling, os_specifics, utils,
     verify::Algorithm,
 };
 
@@ -35,7 +36,7 @@ pub struct DownloadArgs {
     /// URL to be used for download the file [required]
     pub url: String,
 
-    /// Origin hash sum of the file [optional]
+    /// Origin hash sum [optional]
     pub hash_sum: Option<String>,
 
     #[arg(
@@ -51,7 +52,8 @@ pub struct DownloadArgs {
         short,
         long,
         help = "A custom path for the file to be saved (Default is the user download folder)",
-        value_name = "DIR"
+        value_name = "DIR",
+        value_parser = validate_output_target
     )]
     pub output: Option<PathBuf>,
 
@@ -59,7 +61,8 @@ pub struct DownloadArgs {
         short,
         long,
         help = "Rename the file to be downloaded",
-        value_name = "FILE"
+        value_name = "FILE",
+        value_parser = check_file_name
     )]
     pub rename: Option<String>,
 }
@@ -71,7 +74,8 @@ pub struct LocalArgs {
         long,
         conflicts_with = "buffer",
         help = "Path to a file/dir for which the hash sum will be calculated",
-        value_name = "PATH"
+        value_name = "PATH",
+        value_parser = validate_hash_target
     )]
     pub path: Option<PathBuf>,
 
@@ -84,7 +88,7 @@ pub struct LocalArgs {
     )]
     pub buffer: Option<String>,
 
-    /// Origin hash sum of the file [optional]
+    /// Origin hash sum [optional]
     pub hash_sum: Option<String>,
 
     #[arg(
@@ -95,4 +99,42 @@ pub struct LocalArgs {
         default_value_t = Algorithm::default()
     )]
     pub algorithm: Algorithm,
+}
+
+/// Helper function to validate the option [-o, -output] of the download command
+fn validate_output_target(target: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(target);
+    if !path.is_dir() {
+        let cmd_err = commands::CommandError::OutputTargetInvalid(utils::get_absolute_path(&path))
+            .to_string();
+        Err(cmd_err)
+    } else {
+        Ok(path)
+    }
+}
+
+/// Helper function to validate the option [-r, -rename] of the download command
+fn check_file_name(filename: &str) -> Result<String, String> {
+    // we can use safely `unwrap` because the os type was checked before parsing the cli arguments
+    let os_type = os_specifics::get_os().unwrap();
+    match filename_handling::validate_filename(&os_type, filename) {
+        Ok(_) => Ok(filename.to_string()),
+        Err(validate_err) => {
+            let cmd_err =
+                commands::CommandError::InvalidFilename(validate_err.to_string()).to_string();
+            Err(cmd_err)
+        }
+    }
+}
+
+/// Helper function to validate option [-p, -path] of the local command
+fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(target);
+    if !path.exists() {
+        let cmd_err =
+            commands::CommandError::PathNotExist(utils::get_absolute_path(&path)).to_string();
+        Err(cmd_err)
+    } else {
+        Ok(path)
+    }
 }
