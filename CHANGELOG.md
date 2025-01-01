@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.4] - 2025-01-01
+- Refactoring
+- Update dependencies
+- improve user error messages
+
+### Fixed
+- report handler crashed(panicked) on windows if `RUST_BACKTRACE` set to full
+- `download` command
+  - parsing `Content-Range` header was incorrect
+  - if the header specifies an unknown content size (e.g. Content-Range: bytes 0-1023/*), this was not taken into account
+  - now a streamed download is initiated in this case
+
+### Added
+- `info` log level to write only necessary information to the log file
+- `download` command
+  - set connection time out to 25 sec
+  - display user info during the connection establishment
+  - improve logging behavior by using the debug log level
+    - in case of an successfully request, the response headers will be logged
+    - in case of an failed request, the response headers and the response body will be logged
+<br>
+
+
 ## [3.0.3] - 2024-12-16
 - Performance optimizations
 - Refactoring

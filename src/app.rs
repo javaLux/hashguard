@@ -4,26 +4,27 @@ use std::path::PathBuf;
 
 use crate::{panic_handling::PanicReport, utils};
 
-pub const APP_NAME: &str = env!("CARGO_CRATE_NAME");
+pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
 pub const APP_INTERRUPTED_MSG: &str = concat!(
     "\r\x1B[K",
-    env!("CARGO_CRATE_NAME"),
+    env!("CARGO_PKG_NAME"),
     " was interrupted by user..."
 );
 
-/// Represents the possible application log level
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum LogLevel {
+    /// log all information and display a backtrace in event of an error
     Debug,
+    /// log only necessary information
+    Info,
 }
 
 impl std::fmt::Display for LogLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
-            LogLevel::Debug => {
-                write!(f, "debug")
-            }
+            LogLevel::Debug => write!(f, "DEBUG"),
+            LogLevel::Info => write!(f, "INFO"),
         }
     }
 }
@@ -32,17 +33,18 @@ impl std::fmt::Display for LogLevel {
 /// Try to reset the terminal properties in case of the application panicked (crashed).
 /// This way, you won't have your terminal messed up if an unexpected error happens.
 pub fn initialize_panic_hook(log_level: Option<LogLevel>) -> Result<()> {
-    let is_debug_mode = match log_level {
+    let is_debug = match log_level {
         Some(log_level) => match log_level {
             LogLevel::Debug => true,
+            LogLevel::Info => false,
         },
         None => false,
     };
+    // configure the panic hook to capture a span trace, show location and env section
     let (_panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default()
-        .capture_span_trace_by_default(true)
-        // show debug info only when app is running in DEBUG mode
-        .display_location_section(is_debug_mode)
-        .display_env_section(is_debug_mode)
+        .capture_span_trace_by_default(is_debug)
+        .display_location_section(is_debug)
+        .display_env_section(is_debug)
         .into_hooks();
     eyre_hook.install()?;
 
@@ -50,7 +52,7 @@ pub fn initialize_panic_hook(log_level: Option<LogLevel>) -> Result<()> {
     std::panic::set_hook(Box::new(move |panic_info| {
         let mut user_msg = String::new();
 
-        let verbosity_level = if is_debug_mode {
+        let verbosity_level = if is_debug {
             user_msg.push_str("The application panicked (crashed).");
             better_panic::Verbosity::Full
         } else {
@@ -86,18 +88,26 @@ pub fn initialize_logging(log_level: Option<LogLevel>) -> Result<()> {
     create_data_dir()?;
 
     if let Some(log_level) = log_level {
-        if log_level == LogLevel::Debug {
-            set_full_rust_backtrace();
-            init_log_writer()?;
-            log::debug!(
-                "Debug mode is enabled - {} version: {}",
-                APP_NAME,
-                env!("CARGO_PKG_VERSION")
-            );
-            log::debug!("Running on => {}", os_info::get())
+        init_log_writer(log_level)?;
+        match log_level {
+            LogLevel::Debug => {
+                set_rust_backtrace();
+                log::debug!(
+                    "{log_level} mode is enabled - {} version: {}",
+                    APP_NAME,
+                    env!("CARGO_PKG_VERSION")
+                );
+                log::debug!("Running on => {}", os_info::get());
+            }
+            LogLevel::Info => {
+                log::info!(
+                    "{log_level} mode is enabled - {} version: {}",
+                    APP_NAME,
+                    env!("CARGO_PKG_VERSION")
+                );
+            }
         }
     }
-
     Ok(())
 }
 
@@ -106,7 +116,7 @@ pub fn initialize_logging(log_level: Option<LogLevel>) -> Result<()> {
 /// interruptions gracefully. If interrupted, the application will log the interruption and exit.
 pub fn set_ctrl_c_handler() -> Result<()> {
     let exit_cmd = || {
-        log::debug!("{} was interrupted by user...", APP_NAME);
+        log::info!("{} was interrupted by user...", APP_NAME);
         println!("{}", APP_INTERRUPTED_MSG);
         // terminate app
         std::process::exit(1);
@@ -124,11 +134,11 @@ pub fn set_ctrl_c_handler() -> Result<()> {
 /// Initializes the verbosity level for the Rust log output based on the specified LogLevel.
 ///
 /// If the provided log level is `LogLevel::Debug`, this function sets the environment
-/// variable "RUST_BACKTRACE" to "full", enabling detailed backtrace information in case
-/// of a panic. This is particularly useful during debugging to aid in identifying the
+/// variable "RUST_BACKTRACE" to "1", enabling detailed backtrace information in case
+/// of an error. This is particularly useful during debugging to aid in identifying the
 /// source of errors.
-fn set_full_rust_backtrace() {
-    std::env::set_var("RUST_BACKTRACE", "full");
+fn set_rust_backtrace() {
+    std::env::set_var("RUST_BACKTRACE", "1");
 }
 
 /// Initializes the log writer for debugging purposes.
@@ -138,19 +148,22 @@ fn set_full_rust_backtrace() {
 /// in the project's data directory. The logging level is set to debug,
 /// and the logs which was created by the `log` crate are
 /// written to the debug log file using the `simplelog` crate.
-fn init_log_writer() -> Result<()> {
-    let debug_log_file_name = format!(
+fn init_log_writer(log_level: LogLevel) -> Result<()> {
+    let log_file_name = format!(
         "{}-{}.log",
         APP_NAME,
         chrono::Local::now().format("%Y-%m-%dT%H_%M_%S")
     );
-    let debug_file = std::fs::File::create(get_data_dir().join(debug_log_file_name))?;
+    let log_file = std::fs::File::create(get_data_dir().join(log_file_name))?;
 
     let config = simplelog::ConfigBuilder::new()
         .set_time_format_rfc3339()
         .build();
-    let log_level = simplelog::LevelFilter::Debug;
-    simplelog::WriteLogger::init(log_level, config, debug_file)?;
+    let log_level = match log_level {
+        LogLevel::Debug => simplelog::LevelFilter::Debug,
+        LogLevel::Info => simplelog::LevelFilter::Info,
+    };
+    simplelog::WriteLogger::init(log_level, config, log_file)?;
 
     Ok(())
 }

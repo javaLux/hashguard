@@ -1,8 +1,7 @@
-#![allow(dead_code)]
 use std::{
     cmp::min,
+    collections::BTreeMap,
     error::Error,
-    fmt,
     fs::File,
     io::{BufWriter, Read, Write},
     path::PathBuf,
@@ -12,34 +11,36 @@ use std::{
 use color_eyre::eyre::Result;
 
 use crate::{
-    app, color_templates::WARN_TEMPLATE_NO_BG_COLOR, filename_handling, os_specifics::OS, utils,
+    color_templates::WARN_TEMPLATE_NO_BG_COLOR, filename_handling, os_specifics::OS, utils,
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
+
+const BUFFER_SIZE: usize = 4096;
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(25);
 
 const CONTENT_LENGTH_HEADER: &str = "Content-Length";
 const CONTENT_DISPOSITION_HEADER: &str = "Content-Disposition";
 const CONTENT_RANGE_HEADER: &str = "Content-Range";
 const TRANSFER_ENCODING_HEADER: &str = "Transfer-Encoding";
 
+/// Error type for download operations
 #[derive(Debug, Clone)]
-enum DownloadError {
-    DownloadFailed(String),
-    DownloadInterrupted,
+struct DownloadError {
+    err_msg: String,
+}
+
+impl DownloadError {
+    fn new(err_msg: String) -> Self {
+        Self { err_msg }
+    }
 }
 
 impl Error for DownloadError {}
 
-impl fmt::Display for DownloadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DownloadError::DownloadFailed(err) => {
-                write!(f, "Download failed - {}", err)
-            }
-            DownloadError::DownloadInterrupted => {
-                write!(f, "Download interrupted")
-            }
-        }
+impl std::fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Download canceled | {}", self.err_msg)
     }
 }
 
@@ -51,6 +52,7 @@ pub struct DownloadProperties {
     pub os_type: OS,
 }
 
+/// Enum to hold the state of the file size
 #[derive(Debug)]
 enum FileSizeState {
     Known(usize),
@@ -58,11 +60,21 @@ enum FileSizeState {
     Chunked,
 }
 
-#[derive(Debug)]
-struct FileProperties {
-    filename: String,
-    filepath: PathBuf,
-    total_size: usize,
+/// Struct to hold the response headers from the server
+struct ResponseHeaders<'a> {
+    headers: BTreeMap<String, &'a str>,
+}
+
+impl std::fmt::Display for ResponseHeaders<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut headers_str = String::new();
+
+        for (name, value) in &self.headers {
+            headers_str.push_str(&format!("=> {}: {}\n", name, value));
+        }
+
+        write!(f, "{}", headers_str)
+    }
 }
 
 /// Executes the file download for the specified URL and returns the path where the file was saved
@@ -72,49 +84,88 @@ struct FileProperties {
 /// * Starts a progress bar to display the download progress
 /// * Write all bytes from the HTTP response body to a file in 4KiB blocks
 pub fn execute_download(download_properties: DownloadProperties) -> Result<PathBuf> {
-    let http_agent = ureq::builder()
-        .timeout_connect(Duration::from_secs(8))
-        .build();
+    let spinner = ProgressBar::new_spinner()
+        .with_message(format!(
+            "Connection establishment... Timeout: {}s",
+            CONNECTION_TIMEOUT.as_secs()
+        ))
+        .with_position(25);
 
-    // make a HTTP-Get request
+    spinner.set_style(
+        ProgressStyle::default_spinner()
+            .tick_strings(&utils::BOUNCING_BAR)
+            .template("{spinner:.white} {msg}")
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+    );
+
+    // Set spinner tick every 100ms
+    spinner.enable_steady_tick(Duration::from_millis(100));
+
+    let http_agent = ureq::builder().timeout_connect(CONNECTION_TIMEOUT).build();
+
+    // make the HTTP-Get request to the server
     let response = match http_agent.get(&download_properties.url).call() {
-        Ok(response) => response,
+        Ok(response) => {
+            spinner.finish_and_clear();
+            response
+        }
         Err(req_err) => {
-            // if the download failed - fetch the concrete error type
+            spinner.finish_and_clear();
+
+            // if the download failed - handle the concrete error type
             match req_err {
-                ureq::Error::Status(code, response_err) => {
-                    let download_err = DownloadError::DownloadFailed(format!(
-                        "HTTP-Status: {}, Response: {:?}",
-                        code, response_err
+                ureq::Error::Status(code, response) => {
+                    let download_err = DownloadError::new(format!(
+                        "Server response with status code: {} - msg: {}",
+                        code,
+                        response.status_text()
                     ));
 
                     log::error!("{}", download_err);
+
+                    log::debug!("Response headers:\n{}", get_response_headers(&response));
+
+                    match response.into_string() {
+                        Ok(response_body) => {
+                            if response_body.trim().is_empty() {
+                                log::debug!("Response body is empty");
+                            } else {
+                                log::debug!("Response body:\n{}", response_body);
+                            }
+                        }
+                        Err(body_read_err) => {
+                            log::error!(
+                                "Response body could not be read - Details: {:?}",
+                                body_read_err
+                            );
+                        }
+                    }
 
                     return Err(color_eyre::eyre::eyre!(download_err));
                 }
                 ureq::Error::Transport(transport_err) => {
-                    let download_err = DownloadError::DownloadFailed(format!(
-                        "due to HTTP transport error: {:?}",
-                        transport_err
-                    ));
+                    log::error!("Download canceled - Details: {:?}", transport_err);
 
-                    log::error!("{}", download_err);
+                    let msg = match transport_err.source() {
+                        Some(source) => format!("{} - {:?}", transport_err.kind(), source),
+                        None => transport_err.kind().to_string(),
+                    };
 
-                    return Err(color_eyre::eyre::eyre!(download_err));
+                    return Err(color_eyre::eyre::eyre!(DownloadError::new(msg)));
                 }
             }
         }
     };
 
-    log::debug!("{:?}", response);
+    log::debug!("Response headers:\n{}", get_response_headers(&response));
 
-    let file_size_state = get_file_size_state(&response)?;
+    let file_size_state = determine_file_size_state(&response)?;
 
     if let FileSizeState::Unknown = file_size_state {
-        let err_description = "The response from the server did not contain any information on how to handle the file size of the file to be downloaded. \
+        let err_description = "The server response did not contain any information on how to handle the file size of the file to be downloaded. \
 Please check the server or try to download the file from another source.";
 
-        let download_err = DownloadError::DownloadFailed(err_description.to_string());
+        let download_err = DownloadError::new(err_description.to_string());
 
         log::error!("{}", download_err);
         Err(color_eyre::eyre::eyre!(download_err))
@@ -152,201 +203,107 @@ Please check the server or try to download the file from another source.";
         };
 
         // build the final path under which the file is saved
-        let filepath = download_properties.output_target.join(filename.clone());
+        let file_path = download_properties.output_target.join(filename.clone());
 
         // capture the server response body and turn it into a Reader
         let body_reader = response.into_reader();
 
-        match file_size_state {
-            FileSizeState::Known(total_size) => {
-                let file_props = FileProperties {
-                    filename,
-                    filepath,
-                    total_size,
-                };
-
-                make_known_size_download(file_props, body_reader)
-            }
-            FileSizeState::Chunked => {
-                let file_props = FileProperties {
-                    filename,
-                    filepath,
-                    total_size: 0,
-                };
-
-                make_streamed_download(file_props, body_reader)
-            }
-            _ => Ok(PathBuf::new()),
-        }
+        // start the download process
+        make_download_req(file_path, body_reader, file_size_state)
     }
 }
 
-/// Continue downloading a file of unknown size
-fn make_streamed_download(
-    file_props: FileProperties,
+fn make_download_req(
+    file_path: PathBuf,
     mut body_reader: Box<dyn Read + Send + Sync + 'static>,
+    file_size_state: FileSizeState,
 ) -> Result<PathBuf> {
-    // buffer size 4KiB - 4096 bytes
-    let mut buffer = [0; 4096];
-
-    // create the file to write in
-    let file = File::create(&file_props.filepath)?;
-
+    // Create the file to write in
+    let file = File::create(&file_path)?;
     let mut writer = BufWriter::new(file);
 
-    log::debug!("Start streamed download...");
-    log::debug!(
-        "Output target: {}",
-        utils::get_absolute_path(&file_props.filepath)
+    log::info!(
+        "Start download - Total file size: {}",
+        match file_size_state {
+            FileSizeState::Known(total_size) => utils::convert_bytes_to_human_readable(total_size),
+            _ => "unknown".to_string(),
+        }
     );
 
-    // Build a Spinner-Progress-Bar
-    let spinner = ProgressBar::new_spinner();
+    log::info!("Output target: {}", utils::get_absolute_path(&file_path));
 
-    // Define the spinner style
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&utils::BOUNCING_BAR)
-            .template("{spinner:.white} {msg}")
-            .unwrap_or(ProgressStyle::default_spinner()),
-    );
-
-    // set spinner tick every 100ms
-    spinner.enable_steady_tick(Duration::from_millis(100));
-
-    let mut downloaded_bytes: usize = 0;
-
-    // Start measuring time for the download
-    let start = Instant::now();
-
-    let download_result = loop {
-        // try to read from the response body
-        let read_result = body_reader.read(&mut buffer);
-
-        match read_result {
-            Ok(bytes_read) => {
-                // try to write read bytes into the BufWriter
-                let write_result = writer.write_all(&buffer[..bytes_read]);
-
-                if let Err(write_err) = write_result {
-                    let download_err = DownloadError::DownloadFailed(format!(
-                        "Unable to write data from server response into file: {}",
-                        utils::get_absolute_path(&file_props.filepath),
-                    ));
-
-                    log::error!("{} - Details: {:?}", download_err, write_err);
-                    break Err(download_err);
-                }
-
-                // capture the successfully downloaded bytes
-                downloaded_bytes += bytes_read;
-
-                spinner.set_message(format!(
-                    "Download in progress... {}",
-                    utils::convert_bytes_to_human_readable(downloaded_bytes)
-                ));
-
-                // Break the loop if there are no more bytes to read
-                if bytes_read == 0 {
-                    break Ok(());
-                }
-            }
-            Err(body_access_err) => {
-                let download_err = DownloadError::DownloadFailed(
-                    "Failed to read data from server response".to_string(),
-                );
-
-                log::error!("{} - Details: {:?}", download_err, body_access_err);
-                break Err(download_err);
-            }
+    // Build a Progress-Bar or Spinner
+    let progress_bar = match file_size_state {
+        FileSizeState::Known(total_size) => {
+            let pb = ProgressBar::new(total_size as u64);
+            pb.set_style(
+                ProgressStyle::with_template(
+                    "[{msg}] [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+                )
+                .unwrap_or(ProgressStyle::default_bar())
+                .progress_chars("#>-"),
+            );
+            pb.set_message("Download in progress");
+            pb
+        }
+        _ => {
+            let spinner = ProgressBar::new_spinner();
+            spinner.set_style(
+                ProgressStyle::default_spinner()
+                    .tick_strings(&utils::BOUNCING_BAR)
+                    .template("{spinner:.white} {msg}")
+                    .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+            );
+            spinner.enable_steady_tick(Duration::from_millis(100));
+            spinner
         }
     };
 
-    spinner.finish_and_clear();
-
-    // handle the download result
-    handle_download_result(start, download_result)?;
-
-    Ok(file_props.filepath)
-}
-
-/// Continue downloading a file of known size
-fn make_known_size_download(
-    file_props: FileProperties,
-    mut body_reader: Box<dyn Read + Send + Sync + 'static>,
-) -> Result<PathBuf> {
-    // buffer size 4KiB - 4096 bytes
-    let mut buffer = [0; 4096];
-
-    // create the file to write in
-    let file = File::create(&file_props.filepath)?;
-
-    let mut writer = BufWriter::new(file);
-
-    log::debug!("Start download with known file size...");
-    log::debug!(
-        "File size: {}",
-        utils::convert_bytes_to_human_readable(file_props.total_size)
-    );
-    log::debug!(
-        "Output target: {}",
-        utils::get_absolute_path(&file_props.filepath)
-    );
-
-    // build the progress bar
-    let progress_bar = ProgressBar::new(file_props.total_size as u64);
-    progress_bar.set_style(
-        ProgressStyle::with_template(
-            "[{msg}] [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
-        )
-        .unwrap_or(ProgressStyle::default_bar())
-        .progress_chars("#>-"),
-    );
-
-    progress_bar.set_message("Download in progress");
-
+    let mut buffer = [0; BUFFER_SIZE];
     let mut downloaded_bytes: usize = 0;
 
     // Start measuring time for the download
     let start = Instant::now();
 
     let download_result = loop {
-        // try to read from the response body
-        let read_result = body_reader.read(&mut buffer);
-
-        match read_result {
+        // Try to read from the response body
+        match body_reader.read(&mut buffer) {
             Ok(bytes_read) => {
-                // try to write read bytes into the BufWriter
-                let write_result = writer.write_all(&buffer[..bytes_read]);
-
-                if let Err(write_err) = write_result {
-                    let download_err = DownloadError::DownloadFailed(format!(
-                        "Unable to write data from server response into file: {}",
-                        utils::get_absolute_path(&file_props.filepath),
-                    ));
-
-                    log::error!("{} - Details: {:?}", download_err, write_err);
-                    break Err(download_err);
+                if bytes_read == 0 {
+                    break Ok(downloaded_bytes);
                 }
 
-                // capture the successfully downloaded bytes
+                // Try to write read bytes into the BufWriter
+                writer
+                    .write_all(&buffer[..bytes_read])
+                    .map_err(|write_err| {
+                        let download_err = DownloadError::new(format!(
+                            "Unable to write data from server response into file: {}",
+                            utils::get_absolute_path(&file_path),
+                        ));
+                        log::error!("{} - Details: {:?}", download_err, write_err);
+                        download_err
+                    })?;
+
+                // Capture the successfully downloaded bytes
                 downloaded_bytes += bytes_read;
 
-                // get the right value for the progress bar
-                let pb_value = min(downloaded_bytes, file_props.total_size);
-
-                progress_bar.set_position(pb_value as u64);
-
-                // Break the loop if there are no more bytes to read
-                if bytes_read == 0 {
-                    break Ok(());
+                match file_size_state {
+                    FileSizeState::Known(total_size) => {
+                        let pb_value = min(downloaded_bytes, total_size);
+                        progress_bar.set_position(pb_value as u64);
+                    }
+                    _ => {
+                        progress_bar.set_message(format!(
+                            "Download in progress... {}",
+                            utils::convert_bytes_to_human_readable(downloaded_bytes)
+                        ));
+                    }
                 }
             }
             Err(body_access_err) => {
-                let download_err = DownloadError::DownloadFailed(
-                    "Failed to read data from server response".to_string(),
-                );
-
+                let download_err =
+                    DownloadError::new("Failed to read data from server response".to_string());
                 log::error!("{} - Details: {:?}", download_err, body_access_err);
                 break Err(download_err);
             }
@@ -355,41 +312,33 @@ fn make_known_size_download(
 
     progress_bar.finish_and_clear();
 
-    // handle the download result
-    handle_download_result(start, download_result)?;
+    let written_bytes = download_result?;
 
-    Ok(file_props.filepath)
+    // Generate user information
+    handle_download_result(start, written_bytes);
+
+    Ok(file_path)
 }
 
-fn handle_download_result(start_time: Instant, result: Result<(), DownloadError>) -> Result<()> {
-    match result {
-        Ok(_) => {
-            // Measuring the time where download is done
-            let end = Instant::now();
+fn handle_download_result(start_time: Instant, written_bytes: usize) {
+    log::info!(
+        "Download finished - Processed file size: {}",
+        utils::convert_bytes_to_human_readable(written_bytes)
+    );
+    // Measuring the time where download is done
+    let end = Instant::now();
 
-            // calculate the total download time
-            let total_duration = end - start_time;
+    // calculate the total download time
+    let total_duration = end - start_time;
 
-            println!(
-                "\nDownload done in   : {}",
-                utils::calc_duration(total_duration.as_secs())
-            );
-
-            Ok(())
-        }
-        Err(download_err) => match download_err {
-            DownloadError::DownloadInterrupted => {
-                log::debug!("{} was interrupted by user...", app::APP_NAME);
-                println!("{}", app::APP_INTERRUPTED_MSG);
-                // terminate app
-                std::process::exit(1);
-            }
-            _ => Err(color_eyre::eyre::eyre!(download_err.to_string())),
-        },
-    }
+    println!(
+        "\nDownload done in   : {}",
+        utils::calc_duration(total_duration.as_secs())
+    );
 }
 
-fn get_file_size_state(response: &ureq::Response) -> Result<FileSizeState> {
+/// Determine the file size state from the server response
+fn determine_file_size_state(response: &ureq::Response) -> Result<FileSizeState> {
     let file_size_state = {
         let file_size_state = get_content_length(response)?;
         if let FileSizeState::Unknown = file_size_state {
@@ -417,7 +366,7 @@ fn get_content_length(response: &ureq::Response) -> Result<FileSizeState> {
                     if total_size > 0 {
                         Ok(FileSizeState::Known(total_size))
                     } else {
-                        let err = DownloadError::DownloadFailed(
+                        let err = DownloadError::new(
                             "The file size could not be determined from the server response"
                                 .to_string(),
                         );
@@ -434,7 +383,7 @@ fn get_content_length(response: &ureq::Response) -> Result<FileSizeState> {
                     }
                 }
                 Err(parse_err) => {
-                    let err = DownloadError::DownloadFailed(
+                    let err = DownloadError::new(
                         "The file size could not be determined from the server response"
                             .to_string(),
                     );
@@ -461,9 +410,11 @@ fn get_content_range(response: &ureq::Response) -> Result<FileSizeState> {
             // try to extract total size of the file to be downloaded
             match header_value.split('/').last() {
                 Some(total_size) => {
-                    // The total size of the file in bytes (or '*' if unknown)
+                    // if the last part of the header value contains a '*' the total size is unknown
+                    // for example: Content-Range: bytes 0-1023/*
+                    // so we can use a chunked download
                     if total_size.contains("*") {
-                        Ok(FileSizeState::Unknown)
+                        Ok(FileSizeState::Chunked)
                     } else {
                         // try to get the total size as unsigned integer
                         match total_size.parse::<usize>() {
@@ -471,7 +422,7 @@ fn get_content_range(response: &ureq::Response) -> Result<FileSizeState> {
                                 if total_size > 0 {
                                     Ok(FileSizeState::Known(total_size))
                                 } else {
-                                    let err = DownloadError::DownloadFailed(
+                                    let err = DownloadError::new(
                                         "The file size could not be determined from the server response"
                                             .to_string(),
                                     );
@@ -488,7 +439,7 @@ fn get_content_range(response: &ureq::Response) -> Result<FileSizeState> {
                                 }
                             }
                             Err(parse_err) => {
-                                let err = DownloadError::DownloadFailed(
+                                let err = DownloadError::new(
                                     "The file size could not be determined from the server response"
                                         .to_string(),
                                 );
@@ -523,5 +474,17 @@ fn get_transfer_encoding(response: &ureq::Response) -> Result<FileSizeState> {
             }
         }
         None => Ok(FileSizeState::Unknown),
+    }
+}
+
+/// Extract the response headers from the server response
+fn get_response_headers(response: &ureq::Response) -> ResponseHeaders {
+    let response_headers = BTreeMap::from_iter(response.headers_names().iter().map(|name| {
+        let value = response.header(name).unwrap_or_default();
+        (name.to_string(), value)
+    }));
+
+    ResponseHeaders {
+        headers: response_headers,
     }
 }

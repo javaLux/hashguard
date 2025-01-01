@@ -32,7 +32,7 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
       Because by enclosing the URL in double quotation marks, you tell the shell to treat the entire string as a single argument, even if it contains spaces or other special characters. This can prevent errors and unexpected behavior in your shell.
   
 * ### Local-Command
-  * Allows to hash local files, directories or any byte-buffer (futhermore you can also compare with a specific hash sum)
+  * Allows to hash local files, directories or any byte-buffer (furthermore you can also compare with a specific hash sum)
   * **Options**
     * _path_
       * Calculate a hash sum from a file/dir
@@ -48,10 +48,11 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
 * **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you easily calculate and compare hash sums.
-* **Log-Level**
-  * You can enable the application debug mode
-    * This provides additional functionality such as logging all relevant operations in a log file.
-    * Furthermore, the debug mode can be useful to get detailed information about an error (e.g. display a full backtrace)
+* **Logging**
+  * To enable logging, set one of the following log level options: [ `-l=debug|info`, `--log-level=debug|info` ]
+    * `info` log level: write only necessary information to a log file (e.g. common application operations and error messages)
+    * `debug` log level: write all information to the log file and display a backtrace in the event of an error
+      * For example, if you use the `download` command, the whole server response is logged
 
 ## Supported OS
 * Linux [All common distributions]
@@ -135,20 +136,20 @@ cargo build --release
     hashguard local -p /path/to/test_dir
     ````
 
-**Debug-Option**
-  * Enable the debug log level:
+**Use Logging**
+  * Enable `debug` log level:
     ````shell
     hashguard -l debug download "https://example.com/file.zip" a1b2c3d4e5f6
     ````
+  * Enable `info` log level
     ````shell
-    hashguard -l debug local -p /path/to/local_file.txt
+    hashguard -l info local -p /path/to/local_file.txt
     ````
-    * In the event of an error, a full backtrace is displayed
-    * In addition, all log outputs are saved in a log file in the application's data directory.
-    * You can find out the application data directory with the [--version] command
-    * Please note that the application data directory is created as a hidden directory.
-      To see it, you must activate the property for displaying hidden files and folders for your operating system,
-      if you have not already done so
+  * All logs are written to a log file stored in the application's data directory.
+  * You can find out the application data directory with the [ `-V`, `--version` ] command
+  * Please note that the application data directory is created as a hidden directory.
+    To see it, you must activate the property for displaying hidden files and folders for your operating system,
+    if you have not already done so
 
 **Common-Options**
   * Get version info:

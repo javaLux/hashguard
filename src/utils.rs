@@ -1,4 +1,5 @@
 use path_absolutize::Absolutize;
+use regex::Regex;
 use std::path::Path;
 use url::Url;
 
@@ -51,7 +52,7 @@ fn print_hash_result(
 ) {
     let calculated_hash_sum = format!("Calculated hash sum: {}", calculated_hash_sum);
 
-    log::debug!("{calculated_hash_sum}");
+    log::info!("{calculated_hash_sum}");
     println!("{calculated_hash_sum}");
 
     if let Some(hash_to_compare) = hash_to_compare {
@@ -60,7 +61,7 @@ fn print_hash_result(
             hash_to_compare.origin_hash_sum.to_ascii_lowercase()
         );
 
-        log::debug!("{origin_hash}");
+        log::info!("{origin_hash}");
         println!("{origin_hash}");
 
         if !hash_to_compare.is_hash_equal {
@@ -202,7 +203,7 @@ pub fn extract_file_name(url: &str, content_disposition: &str, os_type: &OS) -> 
         }
     } else {
         // try to extract filename from Content-Disposition header
-        match content_disposition_filename(content_disposition) {
+        match extract_filename_from_content_disposition(content_disposition) {
             Some(filename) => {
                 let filename = decode_percent_encoded_to_utf_8(&filename);
                 Some(replace_invalid_chars_with_underscore(&filename, os_type))
@@ -213,45 +214,29 @@ pub fn extract_file_name(url: &str, content_disposition: &str, os_type: &OS) -> 
 }
 
 /// Function to extract filename from Content-Disposition header
-pub fn content_disposition_filename(header_value: &str) -> Option<String> {
-    let file_name = if !header_value.starts_with("attachment;") {
-        None
-    } else {
-        let parts: Vec<&str> = header_value.split(';').collect();
-        if parts.len() < 2 {
-            None
-        } else {
-            let file_name_part = parts.last().unwrap().trim();
-            if file_name_part.starts_with("filename*=") {
-                // Extract the filename and remove surrounding quotes if present
-                if let Some(filename) = file_name_part.strip_prefix("filename*=") {
-                    let filename = filename
-                        .replace("utf-8", "")
-                        .replace("UTF-8", "")
-                        .trim_matches(|c| c == '"' || c == '\'')
-                        .to_string();
+pub fn extract_filename_from_content_disposition(header_value: &str) -> Option<String> {
+    if !header_value.to_lowercase().starts_with("attachment;") {
+        return None;
+    }
+
+    let filename_prefixes = ["filename*=", "filename="];
+    let utf8_regex = Regex::new(r"(?i)utf-8").unwrap(); // Case-insensitive regex for "utf-8"
+
+    for part in header_value.split(';').map(str::trim) {
+        for prefix in &filename_prefixes {
+            if let Some(filename) = part.strip_prefix(prefix) {
+                let filename = utf8_regex
+                    .replace_all(filename, "")
+                    .trim_matches(|c| matches!(c, ' ' | '\t' | '\n' | '\r' | '"' | '\''))
+                    .to_string();
+                if !filename.is_empty() {
                     return Some(filename);
-                } else {
-                    None
                 }
-            } else if file_name_part.starts_with("filename=") {
-                if let Some(filename) = file_name_part.strip_prefix("filename=") {
-                    let filename = filename
-                        .replace("utf-8", "")
-                        .replace("UTF-8", "")
-                        .trim_matches(|c| c == '"' || c == '\'')
-                        .to_string();
-                    return Some(filename);
-                } else {
-                    None
-                }
-            } else {
-                None
             }
         }
-    };
+    }
 
-    file_name
+    None
 }
 
 /// Decodes a percent-encoded UTF-8 string.
@@ -311,20 +296,6 @@ pub fn replace_invalid_chars_with_underscore(filename: &str, os_type: &OS) -> St
         .collect::<String>();
 
     sanitized_filename
-}
-
-#[allow(dead_code)]
-/// Checks if the HTTP status code indicates a redirection (3xx).
-///
-/// # Arguments
-///
-/// * `status_code`: The HTTP status code to check.
-///
-/// # Returns
-///
-/// `true` if the status code indicates a redirection, otherwise `false`.
-pub fn is_redirection(status_code: u16) -> bool {
-    matches!(status_code, 301 | 302 | 307 | 308)
 }
 
 /// Return the passed path as an absolute path, otherwise the passed path

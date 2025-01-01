@@ -1,11 +1,9 @@
+use crate::utils;
 use chksum::{chksum, Chksumable, Hash};
 use clap::ValueEnum;
+use color_eyre::eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{path::PathBuf, thread, time::Duration};
-
-use color_eyre::eyre::Result;
-
-use crate::utils;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 /// Supported hash algorithm for calculating the hash sum
@@ -35,9 +33,10 @@ impl std::fmt::Display for Algorithm {
 /// Calculates the hash sum for a given file or directory using the specified hashing algorithm and returns
 /// the result as a lowercase hexadecimal string.
 pub fn get_file_hash(path: PathBuf, algorithm: Algorithm) -> Result<String> {
-    log::debug!(
-        "Try to calculate {} hash sum for file: '{}'",
+    log::info!(
+        "Try to calculate {} hash for {}: '{}'",
         algorithm,
+        if path.is_dir() { "directory" } else { "file" },
         utils::get_absolute_path(&path)
     );
 
@@ -47,8 +46,8 @@ pub fn get_file_hash(path: PathBuf, algorithm: Algorithm) -> Result<String> {
 /// Calculates the hash sum for a given byte buffer using the specified hashing algorithm and returns
 /// the result as a lowercase hexadecimal string.
 pub fn get_buffer_hash(buffer: Vec<u8>, algorithm: Algorithm) -> Result<String> {
-    log::debug!(
-        "Try to calculate {} hash sum for a given byte buffer. Size: {} bytes",
+    log::info!(
+        "Try to calculate {} hash for a given byte buffer. Size: {} bytes",
         algorithm,
         buffer.len()
     );
@@ -78,22 +77,11 @@ where
     }
 }
 
-/// Calculates the hash sum of a given data source, using a specified hashing algorithm.
+/// Calculates the hash sum of the given data.
 ///
-/// # Parameters
-/// - `data`: The input data to be hashed. Must implement the [`Chksumable`] trait, enabling it to
-///   be processed by the hashing function.
-/// - `T`: The type of hashing algorithm to be used, which must implement the `Hash` trait. The
-///   output digest of this hash type is expected to be both `Send` and `'static`.
-///
-/// # Returns
-/// - `Result<T::Digest>`: If successful, returns the calculated digest of type `T::Digest`.
-///   Otherwise, returns an error if the hash calculation fails.
-///
-/// # Functionality
-/// - Initializes a spinner-style progress bar to indicate the calculation progress to the user.
-/// - Spawns a thread to perform the actual hash calculation and send the result back to the main
-///   thread through a channel. Upon success, the spinner stops, and the hash digest is returned.
+/// This function performs the following tasks:
+/// - Spawns a new thread to calculate the hash sum.
+/// - Displays a spinner to indicate progress.
 /// - Ensures that all spawned threads are joined (completed) before returning the final result.
 ///
 /// # Errors
@@ -118,45 +106,43 @@ where
         ProgressStyle::default_spinner()
             .tick_strings(&utils::BOUNCING_BAR)
             .template("{spinner:.white} {msg}")
-            .unwrap_or(ProgressStyle::default_spinner()),
+            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
 
-    // set spinner tick every 100ms
+    // Set spinner tick every 100ms
     spinner.enable_steady_tick(Duration::from_millis(100));
 
-    // use thread-safe Channels to transfer the Hash sum to the Main-Thread
+    // Use thread-safe Channels to transfer the Hash sum to the Main-Thread
     let (sender, receiver) = std::sync::mpsc::channel();
 
     let hash_sum_thread = thread::spawn(move || -> Result<()> {
-        let digest = match chksum::<T>(data) {
-            Ok(digest) => digest,
-            Err(chksum_err) => {
-                spinner.finish_and_clear();
-                log::error!(
-                    "{}",
-                    format!("Failed to calculate hash sum - Details: {:?}", chksum_err)
-                );
-                return Err(color_eyre::eyre::eyre!(
-                    "Failed to calculate hash sum for the specified file."
-                ));
-            }
-        };
-
-        spinner.finish_and_clear();
-        sender
-            .send(digest)
-            .expect("Couldn't send the calculated hash sum via channel to the main thread");
+        let digest = chksum::<T>(data).map_err(|chk_sum_err| {
+            log::error!("Failed to calculate hash sum - Details: {:?}", chk_sum_err);
+            color_eyre::eyre::eyre!("Failed to calculate hash sum.")
+        })?;
+        sender.send(digest).map_err(|e| {
+            log::error!("Failed to send hash sum to main thread - Details: {:?}", e);
+            color_eyre::eyre::eyre!("Failed to send hash sum to main thread.")
+        })?;
         Ok(())
     });
 
-    // block the main thread until the associated threads are finished
-    let hash_sum_result = hash_sum_thread
-        .join()
-        .expect("Couldn't join on the 'hash sum' thread");
+    // Wait for the hash sum calculation to complete
+    let result = receiver.recv().map_err(|e| {
+        log::error!("Failed to receive hash sum from thread - Details: {:?}", e);
+        color_eyre::eyre::eyre!("Failed to receive hash sum from associated thread.")
+    });
 
-    hash_sum_result?;
+    // Ensure the spinner is finished and cleared
+    spinner.finish_and_clear();
 
-    Ok(receiver.try_recv()?)
+    // Ensure the thread is joined
+    hash_sum_thread.join().map_err(|e| {
+        log::error!("Failed to join hash sum thread - Details: {:?}", e);
+        color_eyre::eyre::eyre!("Failed to join hash sum thread.")
+    })??;
+
+    result
 }
 
 /// Compares the given hashes

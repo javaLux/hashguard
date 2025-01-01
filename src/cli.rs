@@ -14,12 +14,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    #[arg(
-        short,
-        long,
-        help = "Use debug to display backtrace and to write a log file",
-        value_enum
-    )]
+    #[arg(short, long, help = "Set up the application log level", value_enum)]
     pub log_level: Option<LogLevel>,
 }
 

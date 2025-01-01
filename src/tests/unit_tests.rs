@@ -233,79 +233,143 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_content_disposition_filename_1() {
-        use utils::content_disposition_filename;
-
-        let header_value = "attachment; filename=my_test_file.txt";
-
+    fn test_basic_case() {
         assert_eq!(
-            Some("my_test_file.txt".to_string()),
-            content_disposition_filename(header_value)
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename=\"example.txt\""
+            ),
+            Some("example.txt".to_string())
         );
     }
 
     #[test]
-    fn test_content_disposition_filename_2() {
-        use utils::content_disposition_filename;
-
-        let header_value = r#"attachment; filename="my_test_file.txt""#;
-
+    fn test_case_insensitive_attachment() {
         assert_eq!(
-            Some("my_test_file.txt".to_string()),
-            content_disposition_filename(header_value)
+            utils::extract_filename_from_content_disposition(
+                "Attachment; filename=\"example.txt\""
+            ),
+            Some("example.txt".to_string())
         );
     }
 
     #[test]
-    fn test_content_disposition_filename_3() {
-        use utils::content_disposition_filename;
-
-        let header_value = "attachment; filename*=UTF-8''my_test_file.txt";
-
+    fn test_filename_with_utf8_encoding() {
         assert_eq!(
-            Some("my_test_file.txt".to_string()),
-            content_disposition_filename(header_value)
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename*=utf-8''example.txt"
+            ),
+            Some("example.txt".to_string())
         );
     }
 
     #[test]
-    fn test_content_disposition_filename_4() {
-        use utils::content_disposition_filename;
-
-        let header_value = r#"attachment; filename*=utf-8''my_test_file.txt"#;
-
+    fn test_filename_with_utf8_encoding_uppercase() {
         assert_eq!(
-            Some("my_test_file.txt".to_string()),
-            content_disposition_filename(header_value)
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename*=UTF-8''example.txt"
+            ),
+            Some("example.txt".to_string())
         );
     }
 
     #[test]
-    fn test_content_disposition_filename_5() {
-        use utils::content_disposition_filename;
-
-        let header_value = "attachment; filename*=utf-8''Na%C3%AFve%20file.txt";
-
+    fn test_filename_with_quotes() {
         assert_eq!(
-            Some("Na%C3%AFve%20file.txt".to_string()),
-            content_disposition_filename(header_value)
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename=\"example.txt\""
+            ),
+            Some("example.txt".to_string())
         );
     }
 
     #[test]
-    fn test_content_disposition_filename_empty() {
-        use utils::content_disposition_filename;
-
-        let header_value = "";
-        assert_eq!(content_disposition_filename(header_value), None);
+    fn test_filename_with_single_quotes() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition("attachment; filename='example.txt'"),
+            Some("example.txt".to_string())
+        );
     }
 
     #[test]
-    fn test_content_disposition_filename_no_filename() {
-        use utils::content_disposition_filename;
+    fn test_filename_with_extra_spaces() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename=   \"example.txt\"   "
+            ),
+            Some("example.txt".to_string())
+        );
+    }
 
-        let header_value = "attachment; other_param=test";
-        assert_eq!(content_disposition_filename(header_value), None);
+    #[test]
+    fn test_filename_with_special_characters() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename=\"example@123.txt\""
+            ),
+            Some("example@123.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_empty_filename() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition("attachment; filename=\"\""),
+            None
+        );
+    }
+
+    #[test]
+    fn test_no_filename_1() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition("attachment;"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_no_filename_2() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition("attachment; other_param=test"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_invalid_header() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition("inline; filename=\"example.txt\""),
+            None
+        );
+    }
+
+    #[test]
+    fn test_multiple_parts_filename_not_last() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition(
+                "attachment; something; filename=\"example.txt\""
+            ),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_multiple_parts_filename_star_not_last() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition(
+                "attachment; something; filename*=utf-8''example.txt"
+            ),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_mixed_case() {
+        assert_eq!(
+            utils::extract_filename_from_content_disposition(
+                "attachment; filename=\"Example.TXT\""
+            ),
+            Some("Example.TXT".to_string())
+        );
     }
 
     #[test]
@@ -416,18 +480,5 @@ pub mod unit_tests {
         let os_type = OS::Windows;
         let result = replace_invalid_chars_with_underscore(filename, &os_type);
         assert_eq!(result, "");
-    }
-
-    #[test]
-    fn test_redirect_status_codes() {
-        use utils::is_redirection;
-
-        let redirect_codes = [301, 302, 307, 308];
-
-        for status_code in redirect_codes {
-            assert!(is_redirection(status_code));
-        }
-
-        assert!(!is_redirection(404));
     }
 }
