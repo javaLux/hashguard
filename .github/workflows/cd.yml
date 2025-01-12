@@ -57,10 +57,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }} # Use the GitHub token for authentication
         with:
           asset_paths: |
-            $(echo ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-windows.zip)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz.sha256)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-windows.zip.sha256)
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-gnu-linux-x86_64.tar.gz
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-windows.zip
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-gnu-linux-x86_64.tar.gz.sha256
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-windows.zip.sha256
   # Build and release binaries for MacOS (x86_64 and arm64)
   macos:
     runs-on: macos-latest
@@ -109,10 +109,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           asset_paths: |
-            $(echo ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz.sha256)
-            $(echo ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz.sha256)
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-macos-x86_64.tar.gz
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-macos-aarch64.tar.gz
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-macos-x86_64.tar.gz.sha256
+            ${{ steps.build.outputs.PKG_NAME }}-${{ steps.build.outputs.PKG_VERSION }}-macos-aarch64.tar.gz.sha256
 #   crates:
 #     runs-on: ubuntu-latest
 #     needs: [linux_windows, macos]
