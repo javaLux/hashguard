@@ -57,19 +57,23 @@ pub mod unit_tests {
     }
 
     #[test]
-    fn test_is_hash_equal() {
-        assert!(verify::is_hash_equal(
-            "72736fab67d8efab12",
-            "72736fab67d8efab12"
-        ))
+    fn test_hashes_are_equal() {
+        assert!(verify::is_hash_equal("a1b2c3d4", "A1B2C3D4"));
     }
 
     #[test]
-    fn test_is_hash_not_equal() {
-        assert!(!verify::is_hash_equal(
-            "72736fab67d8ef12",
-            "72736fab67d8efab12"
-        ))
+    fn test_hashes_are_not_equal() {
+        assert!(!verify::is_hash_equal("a1b2c3d4", "a1b2c3d5"));
+    }
+
+    #[test]
+    fn test_hashes_with_different_lengths() {
+        assert!(!verify::is_hash_equal("a1b2c3d4", "a1b2c3d4e5"));
+    }
+
+    #[test]
+    fn test_one_empty_hash() {
+        assert!(!verify::is_hash_equal("a1b2c3d4", ""));
     }
 
     #[test]
