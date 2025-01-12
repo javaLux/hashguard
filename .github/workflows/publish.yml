@@ -6,13 +6,15 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2  # Checkout the repository to the runner
 
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1  # Set up the Rust toolchain
+        uses: actions-rs/toolchain@b2417cde72dcf67f306c0ae8e0828a81bf0b189f  # Set up the Rust toolchain
         with:
           toolchain: stable  # Use the stable toolchain
           override: true
