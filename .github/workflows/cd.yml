@@ -1,0 +1,107 @@
+name: CD
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  linux_windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Install Linux and Windows Cross Compilers
+        run: sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
+
+      - name: Install rustup targets
+        run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu
+
+      - name: Build the executable
+        run: cargo build --release --target x86_64-unknown-linux-musl --target x86_64-pc-windows-gnu
+
+      - name: Tar x86_64 binary
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          tar -czvf ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz -C target/x86_64-unknown-linux-musl/release ${PKG_NAME}
+
+      - name: Zip windows binary
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          zip -j ${PKG_NAME}-${PKG_VERSION}-windows.zip target/x86_64-pc-windows-gnu/release/${PKG_NAME}.exe
+
+      - name: Generate SHA256 checksums
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          shasum -a 256 ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz > ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz.sha256
+          shasum -a 256 ${PKG_NAME}-${PKG_VERSION}-windows.zip > ${PKG_NAME}-${PKG_VERSION}-windows.zip.sha256
+
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: |
+            ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz
+            ${PKG_NAME}-${PKG_VERSION}-windows.zip
+            ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz.sha256
+            ${PKG_NAME}-${PKG_VERSION}-windows.zip.sha256
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+
+      - name: Install rustup targets
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+
+      - name: Build the executable
+        run: cargo build --release --target=x86_64-apple-darwin --target=aarch64-apple-darwin
+
+      - name: Zip x86_64 binary
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          tar -czvf ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz -C target/x86_64-apple-darwin/release ${PKG_NAME}
+
+      - name: Zip arm64 binary
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          tar -czvf ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz -C target/aarch64-apple-darwin/release ${PKG_NAME}
+
+      - name: Generate SHA256 checksums
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          shasum -a 256 ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz > ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz.sha256
+          shasum -a 256 ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz > ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz.sha256
+
+      - name: Upload release binaries
+        uses: alexellis/upload-assets@0.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: |
+            ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz
+            ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz
+            ${PKG_NAME}-${PKG_VERSION}-macos-x86_64.tar.gz.sha256
+            ${PKG_NAME}-${PKG_VERSION}-macos-aarch64.tar.gz.sha256
+
+#   crates:
+#     runs-on: ubuntu-latest
+#     needs: [linux_windows, macos]
+#     steps:
+#       - uses: actions/checkout@v3
+#       - uses: actions-rs/toolchain@v1
+#         with:
+#           toolchain: stable
+#           override: true
+#       - uses: katyo/publish-crates@v2
+#         with:
+#           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
