@@ -3,23 +3,24 @@ name: CD
 on:
   release:
     types:
-      - created
+      - created # Trigger this workflow when a new release is created
 
 jobs:
+    # Build and release binaries for Linux and Windows
   linux_windows:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2 # Checkout the repository to the runner
 
       - name: Install Linux and Windows Cross Compilers
-        run: sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32
+        run: sudo apt-get install --yes --no-install-recommends musl-tools gcc-mingw-w64-x86-64-win32 # Install necessary cross-compilers for Linux and Windows
 
       - name: Install rustup targets
         run: rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu
 
       - name: Build the executable
-        run: cargo build --release --target x86_64-unknown-linux-musl --target x86_64-pc-windows-gnu
+        run: cargo build --release --target x86_64-unknown-linux-musl --target x86_64-pc-windows-gnu # Build the executable for both Linux and Windows targets
 
       - name: Tar x86_64 binary
         run: |
@@ -41,9 +42,9 @@ jobs:
           shasum -a 256 ${PKG_NAME}-${PKG_VERSION}-windows.zip > ${PKG_NAME}-${PKG_VERSION}-windows.zip.sha256
 
       - name: Upload release binaries
-        uses: alexellis/upload-assets@0.4.0
+        uses: alexellis/upload-assets@0.4.0 # Use the alexellis/upload-assets action to upload the release binaries
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }} # Use the GitHub token for authentication
         with:
           asset_paths: |
             ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz
@@ -51,6 +52,7 @@ jobs:
             ${PKG_NAME}-${PKG_VERSION}-gnu-linux-x86_64.tar.gz.sha256
             ${PKG_NAME}-${PKG_VERSION}-windows.zip.sha256
 
+  # Build and release binaries for MacOS (x86_64 and arm64)
   macos:
     runs-on: macos-latest
     steps:
@@ -97,6 +99,7 @@ jobs:
 #     runs-on: ubuntu-latest
 #     needs: [linux_windows, macos]
 #     steps:
+#       - name: Publish to crates.io
 #       - uses: actions/checkout@v3
 #       - uses: actions-rs/toolchain@v1
 #         with:
