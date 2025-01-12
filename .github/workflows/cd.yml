@@ -55,11 +55,11 @@ jobs:
           shasum -a 256 ${{ env.RELEASE_NAME }}-windows.zip > ${{ env.RELEASE_NAME }}-windows.zip.sha256
 
       - name: Upload release binaries
-        uses: alexellis/upload-assets@13926a61cdb2cb35f5fdef1c06b8b591523236d3 # Use the alexellis/upload-assets action to upload the release binaries
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # Use the third party action to upload the release binaries
         env:
           GITHUB_TOKEN: ${{ github.token }} # Use the GitHub token for authentication
         with:
-          asset_paths: |
+          files: |
             ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz
             ${{ env.RELEASE_NAME }}-windows.zip
             ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz.sha256
