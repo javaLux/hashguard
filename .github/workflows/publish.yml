@@ -1,0 +1,21 @@
+name: Publish to crates.io
+
+on:
+  workflow_dispatch:  # Trigger this workflow manually
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v2  # Checkout the repository to the runner
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1  # Set up the Rust toolchain
+        with:
+          toolchain: stable  # Use the stable toolchain
+          override: true
+
+      - name: Publish to crates.io
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}  # Publish the crate to crates.io
