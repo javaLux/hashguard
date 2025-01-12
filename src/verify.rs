@@ -147,7 +147,7 @@ where
 
 /// Compares the given hashes
 pub fn is_hash_equal(origin_hash_sum: &str, calculated_hash_sum: &str) -> bool {
-    origin_hash_sum.to_ascii_lowercase() == calculated_hash_sum.to_ascii_lowercase()
+    origin_hash_sum.eq_ignore_ascii_case(calculated_hash_sum)
 }
 
 #[allow(dead_code)]
