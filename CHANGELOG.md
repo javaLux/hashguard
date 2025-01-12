@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.0.5] - 2025-01-12
+- Update dependencies
+
+### Fixed
+- with the `download` command, the reading of the file name from the server response was not implemented correctly
+- this bug has been fixed in this version
+
 ## [3.0.4] - 2025-01-01
 - Refactoring
 - Update dependencies

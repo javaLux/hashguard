@@ -170,52 +170,35 @@ pub fn is_valid_url(url: &str) -> bool {
 /// the last URL path segment.
 /// This function does not modify the original URL string.
 pub fn extract_file_name_from_url(url: &str) -> Option<String> {
-    match Url::parse(url) {
-        Ok(url) => {
-            let file_name = url.path().split('/').collect::<Vec<&str>>();
-            match file_name.last() {
-                Some(file_name) => {
-                    if !file_name.is_empty() {
-                        let file_name = file_name.to_string();
-                        Some(file_name)
-                    } else {
-                        None
-                    }
-                }
-                None => None,
+    Url::parse(url)
+        .ok()?
+        .path()
+        .split('/')
+        .last()
+        .and_then(|file_name| {
+            if file_name.trim().is_empty() {
+                None
+            } else {
+                Some(file_name.to_string())
             }
-        }
-        Err(_) => None,
-    }
+        })
 }
 
-/// Try to extract filename from the given Content-Disposition header or the url
+/// Try to extract the filename from the server response
 pub fn extract_file_name(url: &str, content_disposition: &str, os_type: &OS) -> Option<String> {
-    if content_disposition.is_empty() {
-        match extract_file_name_from_url(url) {
-            Some(filename) => {
-                // we decode as a precaution
-                let filename = decode_percent_encoded_to_utf_8(&filename);
-                // Remove possible invalid characters for the file name dependent on the underlying os
-                Some(replace_invalid_chars_with_underscore(&filename, os_type))
-            }
-            None => None,
-        }
-    } else {
-        // try to extract filename from Content-Disposition header
-        match extract_filename_from_content_disposition(content_disposition) {
-            Some(filename) => {
-                let filename = decode_percent_encoded_to_utf_8(&filename);
-                Some(replace_invalid_chars_with_underscore(&filename, os_type))
-            }
-            None => None,
-        }
-    }
+    // Attempt to extract the filename from Content-Disposition or fallback to the URL path
+    let filename = extract_filename_from_content_disposition(content_disposition)
+        .or_else(|| extract_file_name_from_url(url));
+
+    // If a filename is found, process it
+    filename
+        .map(|f| decode_percent_encoded_to_utf_8(&f))
+        .map(|f| replace_invalid_chars_with_underscore(&f, os_type))
 }
 
 /// Function to extract filename from Content-Disposition header
 pub fn extract_filename_from_content_disposition(header_value: &str) -> Option<String> {
-    if !header_value.to_lowercase().starts_with("attachment;") {
+    if !header_value.to_lowercase().starts_with("attachment;") || header_value.trim().is_empty() {
         return None;
     }
 
