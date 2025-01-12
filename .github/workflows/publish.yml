@@ -13,11 +13,13 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2  # Checkout the repository to the runner
 
-      - name: Set up Rust
-        uses: actions-rs/toolchain@b2417cde72dcf67f306c0ae8e0828a81bf0b189f  # Set up the Rust toolchain
-        with:
-          toolchain: stable  # Use the stable toolchain
-          override: true
+      - name: Update local toolchain
+        run: |
+          rustup update
+
+      - name: Toolchain info
+        run: |
+          rustup --version
 
       - name: Publish to crates.io
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}  # Publish the crate to crates.io
