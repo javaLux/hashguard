@@ -1,6 +1,38 @@
-use std::{backtrace::Backtrace, io::Write, panic::PanicHookInfo, path::Path};
+use crate::{
+    app::{data_dir, set_rust_backtrace, APP_NAME},
+    color_templates::WARN_TEMPLATE_NO_BG_COLOR,
+    utils,
+};
+use anyhow::{Context, Result};
+use std::{
+    backtrace::Backtrace,
+    io::Write,
+    panic::PanicHookInfo,
+    path::{Path, PathBuf},
+};
 
-use crate::utils;
+/// Define a custom panic hook to handle a application crash.
+/// Try to reset the terminal properties in case of the application panicked (crashed).
+/// This way, you won't have your terminal messed up if an unexpected error happens.
+pub fn initialize_panic_hook() -> Result<()> {
+    // set the RUST_BACKTRACE environment variable to 1
+    set_rust_backtrace();
+    // set the custom panic hook handler
+    std::panic::set_hook(Box::new(move |panic_info| {
+        // write the Crash-Report file
+        let crash_report_file = crash_report_file();
+
+        let backtrace = std::backtrace::Backtrace::capture();
+        let panic_report = PanicReport::new(panic_info, backtrace);
+        if let Err(err) = panic_report.write_report_and_print_msg(&crash_report_file) {
+            log::error!("{err}");
+            eprintln!("{err}")
+        }
+
+        std::process::exit(1);
+    }));
+    Ok(())
+}
 
 /// Environment variables Cargo sets for crates.
 /// Cargo exposes these environment variables to your crate when it is compiled.
@@ -105,6 +137,7 @@ struct HumanReadableReport {
     explanation: String,
     cause: String,
     backtrace: String,
+    thread_name: String,
 }
 
 impl HumanReadableReport {
@@ -120,10 +153,15 @@ impl HumanReadableReport {
         self.backtrace = backtrace;
         self
     }
+    fn thread_name(mut self, thread_name: &str) -> Self {
+        self.thread_name = thread_name.to_string();
+        self
+    }
+
     fn serialize(&self) -> String {
         format!(
-            "{}\nexplanation: {}\ncause: {}\n{}",
-            self.cargo_metadata, self.explanation, self.cause, self.backtrace
+            "{}\nexplanation: {}\ncause      : {}\nthread     : {}\n\n{}",
+            self.cargo_metadata, self.explanation, self.cause, self.thread_name, self.backtrace
         )
     }
 }
@@ -138,43 +176,42 @@ impl<'a> PanicReport<'a> {
     }
 
     ///  Try to create the Log-File and write the report
-    pub fn write_report(&self, file_path: &Path) -> color_eyre::eyre::Result<()> {
+    pub fn write_report_and_print_msg(&self, p: &Path) -> Result<()> {
         let report = self.build_human_readable_report();
 
-        match std::fs::File::create(file_path) {
-            Ok(mut log_file) => match log_file.write_all(report.as_bytes()) {
-                Ok(_) => {
-                    eprintln!(
-                        "\n- A crash report file was generated: '{}' \
-                        \n- Submit an issue or email with the subject of '{} Crash Report' \
-                            and include the report as an attachment. \
-                        \n- The project repository and much more can be found in the crash report file.",
-                        utils::get_absolute_path(file_path),
-                        env!("CARGO_PKG_NAME")
-                    );
-                }
-                Err(io_err) => {
-                    let err_msg = format!(
-                        "Unable to write crash report to log file: {} - Details: {:?}",
-                        utils::get_absolute_path(file_path),
-                        io_err
-                    );
-                    return Err(color_eyre::eyre::eyre!(err_msg));
-                }
-            },
-            Err(io_err) => {
-                let err_msg = format!(
-                    "Unable to create log file: {} - Details: {:?}",
-                    utils::get_absolute_path(file_path),
-                    io_err
-                );
-                return Err(color_eyre::eyre::eyre!(err_msg));
-            }
-        }
+        let mut crash_report = std::fs::File::create(p).with_context(|| {
+            format!(
+                "Failed to create Crash-Report file: {}",
+                utils::absolute_path_as_string(p)
+            )
+        })?;
+
+        crash_report.write_all(report.as_bytes()).with_context(|| {
+            format!(
+                "Failed to write crash report to file: {}",
+                utils::absolute_path_as_string(p),
+            )
+        })?;
+
+        let path_to_crash_report = utils::absolute_path_as_string(p);
+
+        println!("\n{}", WARN_TEMPLATE_NO_BG_COLOR.output("The application panicked (crashed). Please see the Crash-Report file for more information"));
+        println!(
+            "\n- A crash report file was generated: '{}' \
+            \n- Submit an issue to: '{}/issues' with the subject of '{} Crash Report' \
+                and include the report as an attachment. \
+            \n- Thank you for your help!",
+            path_to_crash_report,
+            env!("CARGO_PKG_REPOSITORY"),
+            APP_NAME
+        );
         Ok(())
     }
 
     fn build_human_readable_report(&self) -> String {
+        let thread = std::thread::current();
+        let thread_name = thread.name().unwrap_or("<unnamed>");
+
         let message = match (
             self.panic_info.payload().downcast_ref::<&str>(),
             self.panic_info.payload().downcast_ref::<String>(),
@@ -191,7 +228,7 @@ impl<'a> PanicReport<'a> {
 
         let panic_location = match self.panic_info.location() {
             Some(location) => format!(
-                "Panic occurred in file '{}' at line {}",
+                "Panic occurred in file '{}' at line '{}'",
                 location.file(),
                 location.line()
             ),
@@ -204,6 +241,16 @@ impl<'a> PanicReport<'a> {
             .explanation(panic_location)
             .cause(cause)
             .backtrace(backtrace)
+            .thread_name(thread_name)
             .serialize()
     }
+}
+
+fn crash_report_file() -> PathBuf {
+    let crash_report_file_name = format!(
+        "{}-Crash-Report_{}.log",
+        APP_NAME,
+        chrono::Local::now().format("%Y-%m-%dT%H_%M_%S")
+    );
+    data_dir().join(crash_report_file_name)
 }
