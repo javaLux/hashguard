@@ -4,12 +4,32 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.1.0] - 2025-02-28
+- Update dependencies
+- Improved panic handling to enhance stability
+- Enhanced error messages for better debugging
+- Improved CLI command descriptions for clarity
+- Refactoring
+
+### Changed
+- The data directory for log and crash report files has been moved to the user data directory, which varies based on the operating system.
+  - It is no longer created as a hidden directory.
+- Updated logging mechanism:
+  - Instead of creating a new log file on every app start, logs are now written to a single file until it reaches **1MB**.
+  - Once the file reaches this limit, it is renamed with the `.old` suffix, and a new log file is created.
+  - This prevents excessive log file creation and improves log management.
+- Switched from `color-eyre` to `anyhow` for error handling.
+- Removed stack trace display when `logging=debug`.
+<br>
+
 ## [3.0.5] - 2025-01-12
 - Update dependencies
 
 ### Fixed
 - with the `download` command, the reading of the file name from the server response was not implemented correctly
 - this bug has been fixed in this version
+<br>
+
 
 ## [3.0.4] - 2025-01-01
 - Refactoring
