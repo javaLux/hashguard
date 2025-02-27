@@ -14,8 +14,8 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    #[arg(short, long, help = "Set up the application log level", value_enum)]
-    pub log_level: Option<LogLevel>,
+    #[arg(short, long, help = "Set up the application logging", value_enum, value_name = "OPTIONAL")]
+    pub logging: Option<LogLevel>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -100,8 +100,9 @@ pub struct LocalArgs {
 fn validate_output_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.is_dir() {
-        let cmd_err = commands::CommandError::OutputTargetInvalid(utils::get_absolute_path(&path))
-            .to_string();
+        let cmd_err =
+            commands::CommandError::OutputTargetInvalid(utils::absolute_path_as_string(&path))
+                .to_string();
         Err(cmd_err)
     } else {
         Ok(path)
@@ -127,7 +128,7 @@ fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.exists() {
         let cmd_err =
-            commands::CommandError::PathNotExist(utils::get_absolute_path(&path)).to_string();
+            commands::CommandError::PathNotExist(utils::absolute_path_as_string(&path)).to_string();
         Err(cmd_err)
     } else {
         Ok(path)
