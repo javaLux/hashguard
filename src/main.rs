@@ -10,11 +10,11 @@ mod tests;
 mod utils;
 mod verify;
 
+use crate::color_templates::{ERROR_TEMPLATE_NO_BG_COLOR, WARN_TEMPLATE_NO_BG_COLOR};
+use anyhow::Result;
 use clap::Parser;
-use color_eyre::eyre::Result;
-use color_templates::*;
 
-fn main() -> Result<()> {
+fn run() -> Result<()> {
     // get the underlying os type
     let os_type = os_specifics::get_os();
 
@@ -23,8 +23,8 @@ fn main() -> Result<()> {
             // Parse the given CLI-Arguments
             let args = cli::Cli::parse();
 
-            app::initialize_logging(args.log_level)?;
-            app::initialize_panic_hook(args.log_level)?;
+            app::initialize_logging(args.logging)?;
+            panic_handling::initialize_panic_hook()?;
             app::set_ctrl_c_handler()?;
             // check which command is given (download or local)
             match args.command {
@@ -50,4 +50,9 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+fn main() {
+    if let Err(e) = run() {
+        println!("{}\n{}", ERROR_TEMPLATE_NO_BG_COLOR.output("error:"), e);
+    }
 }
