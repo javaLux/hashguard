@@ -1,8 +1,12 @@
+use anyhow::{Context, Result};
 use clap::ValueEnum;
-use color_eyre::eyre::Result;
-use std::path::PathBuf;
+use std::{
+    fs::{self, File, OpenOptions},
+    io::Write,
+    path::PathBuf,
+};
 
-use crate::{panic_handling::PanicReport, utils};
+use crate::utils;
 
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
@@ -14,9 +18,9 @@ pub const APP_INTERRUPTED_MSG: &str = concat!(
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum LogLevel {
-    /// log all information and display a backtrace in event of an error
+    /// log all available information to the log file
     Debug,
-    /// log only necessary information
+    /// log only necessary information to the log file
     Info,
 }
 
@@ -27,60 +31,6 @@ impl std::fmt::Display for LogLevel {
             LogLevel::Info => write!(f, "INFO"),
         }
     }
-}
-
-/// Define a custom panic hook to handle a application crash.
-/// Try to reset the terminal properties in case of the application panicked (crashed).
-/// This way, you won't have your terminal messed up if an unexpected error happens.
-pub fn initialize_panic_hook(log_level: Option<LogLevel>) -> Result<()> {
-    let is_debug = match log_level {
-        Some(log_level) => match log_level {
-            LogLevel::Debug => true,
-            LogLevel::Info => false,
-        },
-        None => false,
-    };
-    // configure the panic hook to capture a span trace, show location and env section
-    let (_panic_hook, eyre_hook) = color_eyre::config::HookBuilder::default()
-        .capture_span_trace_by_default(is_debug)
-        .display_location_section(is_debug)
-        .display_env_section(is_debug)
-        .into_hooks();
-    eyre_hook.install()?;
-
-    // set the custom panic hook handler
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let mut user_msg = String::new();
-
-        let verbosity_level = if is_debug {
-            user_msg.push_str("The application panicked (crashed).");
-            better_panic::Verbosity::Full
-        } else {
-            user_msg.push_str("The application panicked (crashed). Run the application in DEBUG mode [-l debug] to see the full backtrace.");
-            better_panic::Verbosity::Minimal
-        };
-
-        // print out the Better Panic stacktrace
-        better_panic::Settings::new()
-            .message(user_msg)
-            .most_recent_first(false)
-            .lineno_suffix(true)
-            .verbosity(verbosity_level)
-            .create_panic_handler()(panic_info);
-
-        // write the Crash-Report file
-        let log_file_name = format!("{}-Crash-Report.log", APP_NAME);
-        let backtrace = std::backtrace::Backtrace::force_capture();
-        let panic_report = PanicReport::new(panic_info, backtrace);
-        if let Err(report_write_err) =
-            panic_report.write_report(&get_data_dir().join(log_file_name))
-        {
-            log::error!("{}", report_write_err);
-        }
-
-        std::process::exit(1);
-    }));
-    Ok(())
 }
 
 /// Initialize the application logging
@@ -124,7 +74,7 @@ pub fn set_ctrl_c_handler() -> Result<()> {
 
     match ctrlc::set_handler(exit_cmd) {
         Ok(_) => Ok(()),
-        Err(handler_err) => Err(color_eyre::eyre::eyre!(format!(
+        Err(handler_err) => Err(anyhow::anyhow!(format!(
             "Failed to set Ctrl-C signal handler - {:?}",
             handler_err
         ))),
@@ -137,7 +87,7 @@ pub fn set_ctrl_c_handler() -> Result<()> {
 /// variable "RUST_BACKTRACE" to "1", enabling detailed backtrace information in case
 /// of an error. This is particularly useful during debugging to aid in identifying the
 /// source of errors.
-fn set_rust_backtrace() {
+pub fn set_rust_backtrace() {
     std::env::set_var("RUST_BACKTRACE", "1");
 }
 
@@ -149,12 +99,19 @@ fn set_rust_backtrace() {
 /// and the logs which was created by the `log` crate are
 /// written to the debug log file using the `simplelog` crate.
 fn init_log_writer(log_level: LogLevel) -> Result<()> {
-    let log_file_name = format!(
-        "{}-{}.log",
-        APP_NAME,
-        chrono::Local::now().format("%Y-%m-%dT%H_%M_%S")
-    );
-    let log_file = std::fs::File::create(get_data_dir().join(log_file_name))?;
+    let mut log_file =
+        initialize_log_file().with_context(|| "Failed to create application log file")?;
+
+    match log_file.metadata() {
+        Ok(metadata) => {
+            if metadata.len() > 1 {
+                let _ = log_file.write(format!("\n{}\n", "-".repeat(100)).as_bytes());
+            }
+        }
+        Err(_) => {
+            let _ = log_file.write(format!("\n{}\n", "-".repeat(100)).as_bytes());
+        }
+    }
 
     let config = simplelog::ConfigBuilder::new()
         .set_time_format_rfc3339()
@@ -168,6 +125,36 @@ fn init_log_writer(log_level: LogLevel) -> Result<()> {
     Ok(())
 }
 
+/// Create the log file. If it already exists, make sure it's not over a max
+/// size. If it is, move it to a backup path and nuke whatever might be in the
+/// backup path.
+fn initialize_log_file() -> Result<File> {
+    const MAX_FILE_SIZE: u64 = 1000 * 1000; // 1MB
+    let path = log_file();
+
+    if fs::metadata(&path).is_ok_and(|metadata| metadata.len() > MAX_FILE_SIZE) {
+        // Rename new->old, overwriting old. If that fails, just delete new so
+        // it doesn't grow indefinitely. Failure shouldn't stop us from logging
+        // though
+        let _ = fs::rename(&path, log_file_old()).or_else(|_| fs::remove_file(&path));
+    }
+
+    let log_file = OpenOptions::new().create(true).append(true).open(path)?;
+    Ok(log_file)
+}
+
+/// Get the path to the primary log file. **Parent direct may not exist yet,**
+/// caller must create it.
+pub fn log_file() -> PathBuf {
+    data_dir().join(format!("{}.log", APP_NAME))
+}
+
+/// Get the path to the backup log file **Parent direct may not exist yet,**
+/// caller must create it.
+pub fn log_file_old() -> PathBuf {
+    data_dir().join(format!("{}.log.old", APP_NAME))
+}
+
 /// Creates the application's data directory.
 ///
 /// This function creates the necessary data directories,
@@ -178,15 +165,15 @@ fn init_log_writer(log_level: LogLevel) -> Result<()> {
 /// `Err` variant with an associated `std::io::Error` if any error occurs during the
 /// process.
 pub fn create_data_dir() -> Result<()> {
-    let directory = get_data_dir();
-    std::fs::create_dir_all(directory.clone())?;
+    std::fs::create_dir_all(data_dir())
+        .with_context(|| "Failed to create application data directory")?;
     Ok(())
 }
 
 /// Retrieves the data directory path for the project.
 ///
-/// This function uses the `simple_home_dir` crate to determine the user's home directory
-/// and constructs the path to the project's data directory within it. If the home directory
+/// This function uses the `dirs` crate to determine the user's data directory
+/// and constructs the path to the directory dependent on the underlying OS within it. If the home directory
 /// is not available, it falls back to a relative path based on the current directory.
 ///
 /// # Returns
@@ -197,10 +184,10 @@ pub fn create_data_dir() -> Result<()> {
 ///
 /// Ensure that the `PROJECT_NAME` constant is correctly set before calling this function.
 /// The data directory is typically used for storing application-specific data files.
-pub fn get_data_dir() -> PathBuf {
-    match simple_home_dir::home_dir() {
-        Some(home_dir) => home_dir.join(APP_NAME).join(".data"),
-        None => PathBuf::new().join(".").join(APP_NAME).join(".data"),
+pub fn data_dir() -> PathBuf {
+    match dirs::data_dir() {
+        Some(data_dir) => data_dir.join(APP_NAME),
+        None => PathBuf::new().join(".").join(APP_NAME),
     }
 }
 
@@ -210,7 +197,7 @@ pub fn version() -> String {
     let version = env!("CARGO_PKG_VERSION");
     let repo = env!("CARGO_PKG_REPOSITORY");
 
-    let data_dir_path = utils::get_absolute_path(&get_data_dir());
+    let data_dir_path = utils::absolute_path_as_string(&data_dir());
 
     format!(
         "\

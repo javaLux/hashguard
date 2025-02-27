@@ -6,7 +6,7 @@ use regex::Regex;
 
 use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
 use crate::os_specifics;
-use color_eyre::eyre::Result;
+use anyhow::Result;
 
 #[derive(Debug)]
 pub enum FilenameError {
@@ -83,7 +83,7 @@ pub fn is_reserved_filename_on_windows(filename: &str) -> bool {
 
 pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<()> {
     if filename.trim().is_empty() {
-        return Err(color_eyre::eyre::eyre!("Filename can not be empty"));
+        return Err(anyhow::anyhow!("Filename can not be empty"));
     }
 
     match os_type {
@@ -92,26 +92,22 @@ pub fn validate_filename(os_type: &os_specifics::OS, filename: &str) -> Result<(
                 let file_name_err = FilenameError::InvalidOnUnix(
                     os_specifics::UNIX_INVALID_FILE_NAME_CHARS.to_string(),
                 );
-                return Err(color_eyre::eyre::eyre!(file_name_err.to_string()));
+                return Err(file_name_err.into());
             }
         }
         os_specifics::OS::Windows => {
             // File names under Windows must not end with a dot
             if filename.ends_with('.') {
-                return Err(color_eyre::eyre::eyre!(
-                    FilenameError::EndsWithADot.to_string()
-                ));
+                return Err(FilenameError::EndsWithADot.into());
             } else {
                 // check against reserved filename on windows
                 if is_reserved_filename_on_windows(filename) {
-                    return Err(color_eyre::eyre::eyre!(
-                        FilenameError::ReservedFilenameOnWindows.to_string()
-                    ));
+                    return Err(FilenameError::ReservedFilenameOnWindows.into());
                 } else if !is_filename_valid_on_windows(filename) {
                     let file_name_err = FilenameError::InvalidOnWindows(
                         os_specifics::WINDOWS_INVALID_FILE_NAME_CHARS.to_string(),
                     );
-                    return Err(color_eyre::eyre::eyre!(file_name_err.to_string()));
+                    return Err(file_name_err.into());
                 }
             }
         }
@@ -152,7 +148,7 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> 
             }
             Err(err) => {
                 let err_msg = format!("{:?}", err);
-                break Err(color_eyre::eyre::eyre!(err_msg));
+                break Err(anyhow::anyhow!(err_msg));
             }
         }
     }

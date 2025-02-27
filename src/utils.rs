@@ -24,7 +24,7 @@ const TIB: f64 = KIB * GIB;
 /// Processing of the command result
 pub fn processing_cmd_result(cmd_result: CommandResult) {
     let hash_source = match cmd_result.file_location {
-        Some(file_location) => get_absolute_path(&file_location),
+        Some(file_location) => absolute_path_as_string(&file_location),
         None => match cmd_result.buffer_size {
             Some(size) => format!("Buffer of size {} byte(s)", size),
             None => "Unknown".to_string(),
@@ -282,7 +282,7 @@ pub fn replace_invalid_chars_with_underscore(filename: &str, os_type: &OS) -> St
 }
 
 /// Return the passed path as an absolute path, otherwise the passed path
-pub fn get_absolute_path(path: &Path) -> String {
+pub fn absolute_path_as_string(path: &Path) -> String {
     match path.absolutize() {
         Ok(absolute_path) => absolute_path.display().to_string(),
         Err(_) => path.display().to_string(),

@@ -34,17 +34,14 @@ pub fn get_os() -> Option<OS> {
     }
 }
 
-/// Retrieves the default download directory path.
-///
-/// This function uses the `simple_home_dir` crate to determine the user's home directory
-/// and constructs the path to the default download folder. If the home directory
-/// is not available, it falls back to a relative path based on the current directory.
+/// Retrieves the default download directory path dependent on the underlying OS.
+/// If the home directory is not available, it falls back to a relative path based on the current directory.
 ///
 /// # Returns
 ///
 /// Returns a `PathBuf` representing the download directory path.
-pub fn get_default_download_folder() -> PathBuf {
-    match simple_home_dir::home_dir() {
+pub fn download_directory() -> PathBuf {
+    match dirs::home_dir() {
         Some(home_dir) => home_dir.join("Downloads"),
         None => PathBuf::new()
             .join(".")

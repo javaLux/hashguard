@@ -1,7 +1,7 @@
 use crate::utils;
+use anyhow::Result;
 use chksum::{chksum, Chksumable, Hash};
 use clap::ValueEnum;
-use color_eyre::eyre::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::{path::PathBuf, thread, time::Duration};
 
@@ -37,7 +37,7 @@ pub fn get_file_hash(path: PathBuf, algorithm: Algorithm) -> Result<String> {
         "Try to calculate {} hash for {}: '{}'",
         algorithm,
         if path.is_dir() { "directory" } else { "file" },
-        utils::get_absolute_path(&path)
+        utils::absolute_path_as_string(&path)
     );
 
     get_hash_sum_as_lower_hex(path, algorithm)
@@ -118,11 +118,11 @@ where
     let hash_sum_thread = thread::spawn(move || -> Result<()> {
         let digest = chksum::<T>(data).map_err(|chk_sum_err| {
             log::error!("Failed to calculate hash sum - Details: {:?}", chk_sum_err);
-            color_eyre::eyre::eyre!("Failed to calculate hash sum.")
+            anyhow::anyhow!("Failed to calculate hash sum.")
         })?;
         sender.send(digest).map_err(|e| {
             log::error!("Failed to send hash sum to main thread - Details: {:?}", e);
-            color_eyre::eyre::eyre!("Failed to send hash sum to main thread.")
+            anyhow::anyhow!("Failed to send hash sum to main thread.")
         })?;
         Ok(())
     });
@@ -130,7 +130,7 @@ where
     // Wait for the hash sum calculation to complete
     let result = receiver.recv().map_err(|e| {
         log::error!("Failed to receive hash sum from thread - Details: {:?}", e);
-        color_eyre::eyre::eyre!("Failed to receive hash sum from associated thread.")
+        anyhow::anyhow!("Failed to receive hash sum from associated thread.")
     });
 
     // Ensure the spinner is finished and cleared
@@ -139,7 +139,7 @@ where
     // Ensure the thread is joined
     hash_sum_thread.join().map_err(|e| {
         log::error!("Failed to join hash sum thread - Details: {:?}", e);
-        color_eyre::eyre::eyre!("Failed to join hash sum thread.")
+        anyhow::anyhow!("Failed to join hash sum thread.")
     })??;
 
     result
