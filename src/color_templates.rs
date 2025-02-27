@@ -18,3 +18,8 @@ pub const WARN_TEMPLATE_NO_BG_COLOR: ColoredTemplate = ColoredTemplate {
     bg_color: None,
     style: Style::Bold,
 };
+pub const ERROR_TEMPLATE_NO_BG_COLOR: ColoredTemplate = ColoredTemplate {
+    ft_color: Color::Red,
+    bg_color: None,
+    style: Style::Bold,
+};
