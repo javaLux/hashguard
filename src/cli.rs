@@ -14,7 +14,13 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 
-    #[arg(short, long, help = "Set up the application logging", value_enum, value_name = "OPTIONAL")]
+    #[arg(
+        short,
+        long,
+        help = "Set up the application logging",
+        value_enum,
+        value_name = "OPTIONAL"
+    )]
     pub logging: Option<LogLevel>,
 }
 
