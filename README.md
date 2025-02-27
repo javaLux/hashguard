@@ -49,10 +49,10 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
 * **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you easily calculate and compare hash sums.
 * **Logging**
-  * To enable logging, set one of the following log level options: [ `-l=debug|info`, `--log-level=debug|info` ]
-    * `info` log level: write only necessary information to a log file (e.g. common application operations and error messages)
-    * `debug` log level: write all information to the log file and display a backtrace in the event of an error
-      * For example, if you use the `download` command, the whole server response is logged
+  * To enable logging, set one of the following log level options: [ `-l=debug|info`, `--logging=debug|info` ]
+    * `debug` log level: write all available information to the log file
+      * For example, if you use the `download` command, the whole http request and response is logged
+    * `info` log level: write only necessary information to the log file (e.g. common application operations and error messages)
 
 ## Supported OS
 * Linux [All common distributions]
@@ -147,9 +147,6 @@ cargo build --release
     ````
   * All logs are written to a log file stored in the application's data directory.
   * You can find out the application data directory with the [ `-V`, `--version` ] command
-  * Please note that the application data directory is created as a hidden directory.
-    To see it, you must activate the property for displaying hidden files and folders for your operating system,
-    if you have not already done so
 
 **Common-Options**
   * Get version info:
