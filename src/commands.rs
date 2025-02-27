@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use std::path::PathBuf;
 
-use color_eyre::eyre::Result;
+use anyhow::Result;
 
 use crate::cli::{DownloadArgs, LocalArgs};
 use crate::download::{self, DownloadProperties};
@@ -45,7 +45,7 @@ impl fmt::Display for CommandError {
                 write!(f, "{}", msg)
             }
             CommandError::InvalidUrl => {
-                write!(f, "Command error => The specified URL is invalid. Please ensure the URL is correctly formatted,\nincluding the scheme (e.g. 'http://', 'https://').\nFor example: https://example.com")
+                write!(f, "Command error => The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
             }
             CommandError::InvalidHashSum => {
                 write!(
@@ -78,7 +78,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
         // If no output directory was specified
         None => {
             // try to get the default user download folder dependent on the underlying OS
-            os_specifics::get_default_download_folder()
+            os_specifics::download_directory()
         }
     };
 
@@ -87,13 +87,13 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
     if !utils::is_valid_url(download_url) {
         let command_err = CommandError::InvalidUrl;
-        return Err(color_eyre::eyre::eyre!(command_err));
+        return Err(command_err.into());
     }
 
     // Check if the provided hash is a valid hex digit
     if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
         if !verify::is_hash_valid(origin_hash_sum) {
-            return Err(color_eyre::eyre::eyre!(CommandError::InvalidHashSum));
+            return Err(CommandError::InvalidHashSum.into());
         }
     }
 
@@ -136,7 +136,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
     let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
         // Check if the provided hash is a valid hex digit
         if !verify::is_hash_valid(&origin_hash_sum) {
-            return Err(color_eyre::eyre::eyre!(CommandError::InvalidHashSum));
+            return Err(CommandError::InvalidHashSum.into());
         }
 
         let is_hash_equal = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
@@ -144,7 +144,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
             file_location,
             buffer_size,
             used_algorithm: args.algorithm,
-            calculated_hash_sum,
+            calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: Some(HashCompareResult {
                 is_hash_equal,
                 origin_hash_sum,
@@ -155,7 +155,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
             file_location,
             buffer_size,
             used_algorithm: args.algorithm,
-            calculated_hash_sum,
+            calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: None,
         }
     };
