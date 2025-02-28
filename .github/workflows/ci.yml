@@ -1,13 +1,16 @@
 name: CI
 
+# on:
+#     push:
+#         branches: [ "main", "feature-**", "patch-**" ]
+#     pull_request:
+#         branches: [ "main", "feature-**", "patch-**" ]
+#         paths-ignore:
+#         - 'LICENSE'
+#         - 'README.md'
+
 on:
-    push:
-        branches: [ "main", "feature-**", "patch-**" ]
-    pull_request:
-        branches: [ "main", "feature-**", "patch-**" ]
-        paths-ignore:
-        - 'LICENSE'
-        - 'README.md'
+  workflow_dispatch:  # Trigger this workflow manually
 
 env:
   CARGO_TERM_COLOR: always
