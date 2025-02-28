@@ -44,7 +44,7 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt update && apt dist-upgrade -y
+        run: sudo apt-get update && apt-get dist-upgrade -y
         shell: bash
 
       - name: Install Rust targets
