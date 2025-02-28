@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file. The format 
 - Improved CLI command descriptions for clarity
 - Refactoring
 
+### Added
+- pre compiled binaries for Linux, MacOs and Windows
+  - provided builds for `x86_64` and `aarch_64(ARM64)`
+
 ### Changed
 - The data directory for log and crash report files has been moved to the user data directory, which varies based on the operating system.
   - It is no longer created as a hidden directory.
