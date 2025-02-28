@@ -21,21 +21,37 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v2 # Checkout the repository to the runner
+
+      - name: Install Linux Cross Compilers
+        run: sudo apt-get install --yes --no-install-recommends gcc-aarch64-linux-gnu libc6-dev:arm64
+
+      - name: Install rustup targets
+        run: rustup target add x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
+
       - name: Build the executable
-        run: cargo build --release
+        run: cargo build --release --target=x86_64-unknown-linux-gnu --target=aarch64-unknown-linux-gnu
+
       - name: Build release name
         run: |
           PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
           PKG_VERSION=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
           RELEASE_NAME="${PKG_NAME}_${PKG_VERSION}"
           echo "RELEASE_NAME=$RELEASE_NAME" >> $GITHUB_ENV
+
       - name: Tar x86_64 binary
         run: |
           PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
           tar -czvf ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz -C target/release ${PKG_NAME}
+
+      - name: Tar arm64 binary
+        run: |
+          PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          tar -czvf ${{ env.RELEASE_NAME }}-gnu-linux-aarch64.tar.gz -C target/aarch64-unknown-linux-gnu/release ${PKG_NAME}
+
       - name: Generate SHA256 checksums
         run: |
           shasum -a 256 ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz > ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz.sha256
+          shasum -a 256 ${{ env.RELEASE_NAME }}-gnu-linux-aarch64.tar.gz > ${{ env.RELEASE_NAME }}-gnu-linux-aarch64.tar.gz.sha256
   
       - name: Upload release binaries
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # Use the third party action to upload the release binaries
@@ -45,6 +61,8 @@ jobs:
           files: |
             ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz
             ${{ env.RELEASE_NAME }}-gnu-linux-x86_64.tar.gz.sha256
+            ${{ env.RELEASE_NAME }}-gnu-linux-aarch64.tar.gz
+            ${{ env.RELEASE_NAME }}-gnu-linux-aarch64.tar.gz.sha256
 
   
 
@@ -104,8 +122,7 @@ jobs:
 
       - name: Build the executable
         run: |
-          cargo build --release --target=x86_64-pc-windows-msvc
-          cargo build --release --target=aarch64-pc-windows-msvc
+          cargo build --release --target=x86_64-pc-windows-msvc --target=aarch64-pc-windows-msvc
         shell: pwsh
 
       - name: Build release name
