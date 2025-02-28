@@ -42,11 +42,6 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v2
 
-      - name: Install dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && apt-get dist-upgrade -y
-        shell: bash
-
       - name: Install Rust targets
         run: rustup target add ${{ matrix.targets }}
         shell: bash
