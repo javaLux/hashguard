@@ -29,6 +29,8 @@ jobs:
               gcc-aarch64-linux-gnu \
               g++-aarch64-linux-gnu \
               binutils-aarch64-linux-gnu \
+              libgcc-9-dev-arm64-cross \
+              libstdc++-9-dev-arm64-cross \
 
 
       - name: Install rustup targets
@@ -37,11 +39,14 @@ jobs:
       - name: Build x86_64 binary
         run: cargo build --release --target=x86_64-unknown-linux-gnu
 
+      - name: Set up environment for cross-compilation
+        run: |
+          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+      
       - name: Build aarch64 binary
         run: |
-          export CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc
-          export CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
-
           cargo build --release --target=aarch64-unknown-linux-gnu
 
       - name: Build release name
