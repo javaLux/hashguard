@@ -22,26 +22,21 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            targets: x86_64-unknown-linux-musl aarch64-unknown-linux-musl
+            targets: x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu
             package_formats:
-              - name: gnu-linux-x86_64.tar.gz
-                cmd: tar -czvf
-              - name: gnu-linux-aarch64.tar.gz
-                cmd: tar -czvf
+              - { name: gnu-linux-x86_64.tar.gz, cmd: tar -czvf }
+              - { name: gnu-linux-aarch64.tar.gz, cmd: tar -czvf }
           - os: macos-latest
             targets: x86_64-apple-darwin aarch64-apple-darwin
             package_formats:
-              - name: macos-x86_64.tar.gz
-                cmd: tar -czvf
-              - name: macos-aarch64.tar.gz
-                cmd: tar -czvf
+              - { name: macos-x86_64.tar.gz, cmd: tar -czvf }
+              - { name: macos-aarch64.tar.gz, cmd: tar -czvf }
           - os: windows-latest
-            targets: x86_64-pc-windows-gnu aarch64-pc-windows-msvc
+            targets: x86_64-pc-windows-msvc aarch64-pc-windows-msvc
             package_formats:
-              - name: windows-x86_64.zip
-                cmd: zip -j
-              - name: windows-aarch64.zip
-                cmd: zip -j
+              - { name: windows-x86_64.zip, cmd: zip -j }
+              - { name: windows-aarch64.zip, cmd: zip -j }
+              
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout the repository
@@ -49,7 +44,7 @@ jobs:
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install --yes --no-install-recommends musl-tools
+        run: sudo apt update && apt dist-upgrade -y
         shell: bash
 
       - name: Install Rust targets
@@ -85,7 +80,7 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           PKG_NAME=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
-          for format in "${{ toJson(matrix.package_formats) }}"; do
+          for format in "${{ matrix.package_formats }}"; do
             EXTENSION=$(echo "$format" | jq -r '.name')
             CMD=$(echo "$format" | jq -r '.cmd')
             TARGET=$(echo "$EXTENSION" | awk -F'-' '{print $NF}' | sed 's/\.tar\.gz//;s/\.zip//')
@@ -97,7 +92,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           $PKG_NAME = $(cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].name
-          $formats = "${{ toJson(matrix.package_formats) }}" | ConvertFrom-Json
+          $formats = "${{ matrix.package_formats }}" | ConvertFrom-Json
           foreach ($format in $formats) {
             $EXTENSION = $format.name
             $CMD = $format.cmd
