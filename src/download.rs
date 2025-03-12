@@ -287,13 +287,14 @@ fn make_download_req(
 }
 
 fn handle_download_result(start_time: Instant, written_bytes: usize) {
+    // Measuring the time where download is done
+    let end = Instant::now();
+
     log::info!(
         "Download finished - Processed file size: {}",
         utils::convert_bytes_to_human_readable(written_bytes)
     );
-    // Measuring the time where download is done
-    let end = Instant::now();
-
+    
     // calculate the total download time
     let total_duration = end - start_time;
 
