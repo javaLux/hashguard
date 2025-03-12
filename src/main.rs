@@ -53,6 +53,6 @@ fn run() -> Result<()> {
 }
 fn main() {
     if let Err(e) = run() {
-        println!("{}\n{}", ERROR_TEMPLATE_NO_BG_COLOR.output("error:"), e);
+        eprintln!("{}\n{}", ERROR_TEMPLATE_NO_BG_COLOR.output("error:"), e);
     }
 }
