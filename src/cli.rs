@@ -106,9 +106,10 @@ pub struct LocalArgs {
 fn validate_output_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.is_dir() {
-        let cmd_err =
-            commands::CommandError::OutputTargetInvalid(utils::absolute_path_as_string(&path))
-                .to_string();
+        let cmd_err = commands::CommandValidationError::OutputTargetInvalid(
+            utils::absolute_path_as_string(&path),
+        )
+        .to_string();
         Err(cmd_err)
     } else {
         Ok(path)
@@ -123,7 +124,8 @@ fn check_file_name(filename: &str) -> Result<String, String> {
         Ok(_) => Ok(filename.to_string()),
         Err(validate_err) => {
             let cmd_err =
-                commands::CommandError::InvalidFilename(validate_err.to_string()).to_string();
+                commands::CommandValidationError::InvalidFilename(validate_err.to_string())
+                    .to_string();
             Err(cmd_err)
         }
     }
@@ -134,7 +136,8 @@ fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.exists() {
         let cmd_err =
-            commands::CommandError::PathNotExist(utils::absolute_path_as_string(&path)).to_string();
+            commands::CommandValidationError::PathNotExist(utils::absolute_path_as_string(&path))
+                .to_string();
         Err(cmd_err)
     } else {
         Ok(path)

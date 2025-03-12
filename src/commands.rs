@@ -27,7 +27,7 @@ pub struct HashCompareResult {
 
 // Represents possible cli command errors
 #[derive(Debug, PartialEq, PartialOrd)]
-pub enum CommandError {
+pub enum CommandValidationError {
     PathNotExist(String),
     InvalidUrl,
     InvalidHashSum,
@@ -35,32 +35,33 @@ pub enum CommandError {
     InvalidFilename(String),
 }
 
-impl Error for CommandError {}
+impl Error for CommandValidationError {}
 
-impl fmt::Display for CommandError {
+impl fmt::Display for CommandValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let prefix = "Validation failed →";
         match self {
-            CommandError::PathNotExist(path) => {
+            CommandValidationError::PathNotExist(path) => {
                 let msg = format!("The specified path '{}' does not exist", path);
                 write!(f, "{}", msg)
             }
-            CommandError::InvalidUrl => {
-                write!(f, "Command error => The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
+            CommandValidationError::InvalidUrl => {
+                write!(f, "{prefix} The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
             }
-            CommandError::InvalidHashSum => {
+            CommandValidationError::InvalidHashSum => {
                 write!(
                     f,
-                    "Command error => The specified hash sum is not a valid hexadecimal digit"
+                    "{prefix} The specified hash sum is not a valid hexadecimal digit"
                 )
             }
-            CommandError::OutputTargetInvalid(target) => {
+            CommandValidationError::OutputTargetInvalid(target) => {
                 let msg = format!(
-                    "Invalid target - '{}' does not exist or is not a directory",
+                    "Invalid output target - '{}' does not exist or is not a directory",
                     target
                 );
                 write!(f, "{}", msg)
             }
-            CommandError::InvalidFilename(filename_err) => {
+            CommandValidationError::InvalidFilename(filename_err) => {
                 let msg = format!("Invalid filename - {}", filename_err);
                 write!(f, "{}", msg)
             }
@@ -86,14 +87,14 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     let download_url = &args.url;
 
     if !utils::is_valid_url(download_url) {
-        let command_err = CommandError::InvalidUrl;
+        let command_err = CommandValidationError::InvalidUrl;
         return Err(command_err.into());
     }
 
     // Check if the provided hash is a valid hex digit
     if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
         if !verify::is_hash_valid(origin_hash_sum) {
-            return Err(CommandError::InvalidHashSum.into());
+            return Err(CommandValidationError::InvalidHashSum.into());
         }
     }
 
@@ -136,7 +137,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
     let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
         // Check if the provided hash is a valid hex digit
         if !verify::is_hash_valid(&origin_hash_sum) {
-            return Err(CommandError::InvalidHashSum.into());
+            return Err(CommandValidationError::InvalidHashSum.into());
         }
 
         let is_hash_equal = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
