@@ -15,7 +15,7 @@ rust-version = "1.74.0"
 [dependencies]
 chksum = { version = "0.4.0", default-features = false, features = ["md5", "sha1", "sha2-224", "sha2-256", "sha2-384", "sha2-512"] }
 chrono = { version = "0.4.40", default-features = false, features = ["clock"] }
-clap = { version = "4.5.31", features = ["derive", "cargo", "string"] }
+clap = { version = "4.5.32", features = ["derive", "cargo", "string"] }
 ctrlc = "3.4.5"
 indicatif = { version = "0.17.11", default-features = false }
 log = "0.4.26"
@@ -26,9 +26,9 @@ percent-encoding = "2.3.1"
 regex = { version = "1.11.1", default-features = false, features = ["unicode"] }
 dirs = "6.0.0"
 simplelog = "0.12.2"
-ureq = "3.0.7"
+ureq = "3.0.8"
 url = { version = "2.5.4", default-features = false }
-anyhow = "1.0.96"
+anyhow = "1.0.97"
 
 [profile.release]
 # compiler optimizations for binary size
