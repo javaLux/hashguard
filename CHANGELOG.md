@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [3.1.1] - 2025-03-23
+- Update dependencies
+<br>
+
+
 ## [3.1.0] - 2025-02-28
 - Update dependencies
 - Improved panic handling to enhance stability
