@@ -294,7 +294,7 @@ fn handle_download_result(start_time: Instant, written_bytes: usize) {
         "Download finished - Processed file size: {}",
         utils::convert_bytes_to_human_readable(written_bytes)
     );
-    
+
     // calculate the total download time
     let total_duration = end - start_time;
 
