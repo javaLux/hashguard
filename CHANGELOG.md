@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [4.0.0] - 2025-05-04
+- Update dependencies
+- The calculation of the hash sum when downloading a file has been made more efficient. Now the hash sum is calculated directly during the download, which  reduces CPU and memory usage. As only small blocks of data are used for the calculation. The same applies to local files and directories.
+
+### Changed
+- Insecure hash algorithms have been removed (MD5, SHA1)
+
+### Added
+- ``SHA3`` hash algorithm is now supported
+- ``-s, --save`` flag, to be able to store the calculated hash sum in a file, stored in the app data directory
+- **Local-Command**
+ - It is now possible to include file and directory names in the calculation of the hash sum by using the ``-i, --include-names`` flag
+<br>
+
+
 ## [3.1.1] - 2025-03-23
 - Update dependencies
 <br>
