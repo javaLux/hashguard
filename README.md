@@ -34,6 +34,8 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 * ### Local-Command
   * Allows to hash local files, directories or any byte-buffer (furthermore you can also compare with a specific hash sum)
   * **Options**
+    * _include-names_
+        * Enables the inclusion of file and directory names for the calculation of the hash sum. This option only has an effect in conjunction with the ``--path`` option
     * _path_
       * Calculate a hash sum from a file/dir
     * _buffer_
@@ -46,7 +48,7 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 
 
 * **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
-* **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-1, SHA2-256, and more. The default Hash-Algorithm is SHA2-256.
+* **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-2, SHA-3 family. The default Hash-Algorithm is SHA2-256.
 * **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you easily calculate and compare hash sums.
 * **Logging**
   * To enable logging, set one of the following log level options: [ `-l=debug|info`, `--logging=debug|info` ]
@@ -168,12 +170,14 @@ cargo build --release
     ````
 
 ### Supported Hash Algorithms
-* MD5
-* SHA-1
 * SHA2-224
 * SHA2-256
 * SHA2-384
 * SHA2-512
+* SHA3-224
+* SHA3-256
+* SHA3-384
+* SHA3-512
 
 ## Notice
 **_No colored console output under windows?_**
