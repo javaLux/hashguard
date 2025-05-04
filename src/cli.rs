@@ -4,8 +4,9 @@ use clap::{Args, Parser, Subcommand};
 
 use crate::{
     app::{version, LogLevel},
-    commands, filename_handling, os_specifics, utils,
-    verify::Algorithm,
+    commands, filename_handling,
+    hasher::Algorithm,
+    os_specifics, utils,
 };
 
 #[derive(Parser)]
@@ -66,6 +67,13 @@ pub struct DownloadArgs {
         value_parser = check_file_name
     )]
     pub rename: Option<String>,
+
+    #[arg(
+        short,
+        long,
+        help = "Save the hash to a file, stored in the app data directory"
+    )]
+    pub save: bool,
 }
 
 #[derive(Debug, Args)]
@@ -100,6 +108,20 @@ pub struct LocalArgs {
         default_value_t = Algorithm::default()
     )]
     pub algorithm: Algorithm,
+
+    #[arg(
+        short,
+        long,
+        help = "Include file and directory names in the hash computation [Only has an effect with the option --path]"
+    )]
+    pub include_names: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Save the hash to a file, stored in the app data directory"
+    )]
+    pub save: bool,
 }
 
 /// Helper function to validate the option [-o, -output] of the download command
