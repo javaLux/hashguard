@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod unit_tests {
-    use crate::{filename_handling, os_specifics, utils, verify};
+    use crate::{filename_handling, hasher, os_specifics, utils};
 
     #[test]
     fn test_os_type() {
@@ -18,62 +18,62 @@ pub mod unit_tests {
     #[test]
     fn test_is_lower_hex_1() {
         let hash = "72736fab67d8efab12";
-        assert!(verify::is_lower_hex(hash))
+        assert!(hasher::is_lower_hex(hash))
     }
 
     #[test]
     fn test_is_lower_hex_2() {
         let hash = "abcdef";
-        assert!(verify::is_lower_hex(hash))
+        assert!(hasher::is_lower_hex(hash))
     }
 
     #[test]
     fn test_is_upper_hex_1() {
         let hash = "72736FAB67D8EFAB12";
-        assert!(!verify::is_lower_hex(hash))
+        assert!(!hasher::is_lower_hex(hash))
     }
 
     #[test]
     fn test_is_upper_hex_2() {
         let hash = "ABCDEF";
-        assert!(!verify::is_lower_hex(hash))
+        assert!(!hasher::is_lower_hex(hash))
     }
 
     #[test]
     fn test_is_valid_hash() {
         let hash = "72736FAB67D8EFAB12";
-        assert!(verify::is_hash_valid(hash))
+        assert!(hasher::is_valid_hex_digit(hash))
     }
 
     #[test]
     fn test_is_invalid_hash_1() {
         let hash = "tghrz768jut";
-        assert!(!verify::is_hash_valid(hash))
+        assert!(!hasher::is_valid_hex_digit(hash))
     }
 
     #[test]
     fn test_is_invalid_hash_2() {
-        assert!(!verify::is_hash_valid("  \t"))
+        assert!(!hasher::is_valid_hex_digit("  \t"))
     }
 
     #[test]
     fn test_hashes_are_equal() {
-        assert!(verify::is_hash_equal("a1b2c3d4", "A1B2C3D4"));
+        assert!(hasher::is_hash_equal("a1b2c3d4", "A1B2C3D4"));
     }
 
     #[test]
     fn test_hashes_are_not_equal() {
-        assert!(!verify::is_hash_equal("a1b2c3d4", "a1b2c3d5"));
+        assert!(!hasher::is_hash_equal("a1b2c3d4", "a1b2c3d5"));
     }
 
     #[test]
     fn test_hashes_with_different_lengths() {
-        assert!(!verify::is_hash_equal("a1b2c3d4", "a1b2c3d4e5"));
+        assert!(!hasher::is_hash_equal("a1b2c3d4", "a1b2c3d4e5"));
     }
 
     #[test]
     fn test_one_empty_hash() {
-        assert!(!verify::is_hash_equal("a1b2c3d4", ""));
+        assert!(!hasher::is_hash_equal("a1b2c3d4", ""));
     }
 
     #[test]

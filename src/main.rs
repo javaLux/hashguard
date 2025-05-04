@@ -4,11 +4,12 @@ mod color_templates;
 mod commands;
 mod download;
 mod filename_handling;
+mod hasher;
+mod local;
 mod os_specifics;
 mod panic_handling;
 mod tests;
 mod utils;
-mod verify;
 
 use crate::color_templates::{ERROR_TEMPLATE_NO_BG_COLOR, WARN_TEMPLATE_NO_BG_COLOR};
 use anyhow::Result;

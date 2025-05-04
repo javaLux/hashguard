@@ -4,19 +4,21 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-use crate::cli::{DownloadArgs, LocalArgs};
-use crate::download::{self, DownloadProperties};
-use crate::os_specifics;
-use crate::utils;
-use crate::verify::{self, Algorithm};
+use crate::{
+    cli::{DownloadArgs, LocalArgs},
+    download::{self, DownloadProperties},
+    hasher::{self, Algorithm},
+    local, os_specifics, utils,
+};
 
 #[derive(Debug)]
 pub struct CommandResult {
     pub file_location: Option<PathBuf>,
-    pub buffer_size: Option<usize>,
+    pub buffer: Option<String>,
     pub used_algorithm: Algorithm,
     pub calculated_hash_sum: String,
     pub hash_compare_result: Option<HashCompareResult>,
+    pub save: bool,
 }
 
 #[derive(Debug)]
@@ -71,6 +73,13 @@ impl fmt::Display for CommandValidationError {
 
 // Handle the CLI subcommand 'download'
 pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<()> {
+    // First check if a provided hash sum is valid
+    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
+        if !hasher::is_valid_hex_digit(origin_hash_sum) {
+            return Err(CommandValidationError::InvalidHashSum.into());
+        }
+    }
+
     // fetch the output target
     let output_target = args.output;
 
@@ -91,15 +100,9 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
         return Err(command_err.into());
     }
 
-    // Check if the provided hash is a valid hex digit
-    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
-        if !verify::is_hash_valid(origin_hash_sum) {
-            return Err(CommandValidationError::InvalidHashSum.into());
-        }
-    }
-
     // build the required DownloadProperties
     let download_properties = DownloadProperties {
+        algorithm: args.algorithm,
         url: download_url.to_string(),
         output_target,
         default_file_name: args.rename,
@@ -107,60 +110,86 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     };
 
     // start the download
-    let file_path = download::execute_download(download_properties)?;
+    let download_result = download::execute_download(download_properties)?;
 
-    let local_args = LocalArgs {
-        path: Some(file_path),
-        buffer: None,
-        hash_sum: args.hash_sum,
-        algorithm: args.algorithm,
+    let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
+        let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &download_result.hash_sum);
+
+        CommandResult {
+            file_location: Some(download_result.file_location),
+            buffer: None,
+            used_algorithm: args.algorithm,
+            calculated_hash_sum: download_result.hash_sum,
+            hash_compare_result: Some(HashCompareResult {
+                is_hash_equal,
+                origin_hash_sum,
+            }),
+            save: args.save,
+        }
+    } else {
+        CommandResult {
+            file_location: Some(download_result.file_location),
+            buffer: None,
+            used_algorithm: args.algorithm,
+            calculated_hash_sum: download_result.hash_sum,
+            hash_compare_result: None,
+            save: args.save,
+        }
     };
+    utils::processing_cmd_result(&cmd_result)?;
 
-    handle_local_cmd(local_args)
+    Ok(())
 }
 
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
-    let (calculated_hash_sum, file_location, buffer_size) = if let Some(path) = args.path {
+    // First check if a provided hash sum is valid
+    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
+        if !hasher::is_valid_hex_digit(origin_hash_sum) {
+            return Err(CommandValidationError::InvalidHashSum.into());
+        }
+    }
+
+    let (calculated_hash_sum, file_location, buffer) = if let Some(path) = args.path {
         // calculate the file hash
-        let calculated_hash_sum = verify::get_file_hash(path.clone(), args.algorithm)?;
+        let calculated_hash_sum =
+            local::get_hash_for_object(path.clone(), args.algorithm, args.include_names)?;
         (calculated_hash_sum, Some(path), None)
     } else if let Some(some_text) = args.buffer {
         let buffer = some_text.as_bytes().to_vec();
-        let buffer_size = buffer.len();
-        let calculated_hash_sum = verify::get_buffer_hash(buffer, args.algorithm)?;
-        (calculated_hash_sum, None, Some(buffer_size))
+        let calculated_hash_sum = local::get_buffer_hash(&buffer, args.algorithm);
+        (calculated_hash_sum, None, Some(some_text))
     } else {
-        return Ok(());
+        return Err(anyhow::anyhow!(
+            "Either a file path or a buffer must be provided."
+        ));
     };
 
     let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
-        // Check if the provided hash is a valid hex digit
-        if !verify::is_hash_valid(&origin_hash_sum) {
-            return Err(CommandValidationError::InvalidHashSum.into());
-        }
+        let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
 
-        let is_hash_equal = verify::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
         CommandResult {
             file_location,
-            buffer_size,
+            buffer,
             used_algorithm: args.algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: Some(HashCompareResult {
                 is_hash_equal,
                 origin_hash_sum,
             }),
+            save: args.save,
         }
     } else {
         CommandResult {
             file_location,
-            buffer_size,
+            buffer,
             used_algorithm: args.algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: None,
+            save: args.save,
         }
     };
-    utils::processing_cmd_result(cmd_result);
+    utils::processing_cmd_result(&cmd_result)?;
 
     Ok(())
 }

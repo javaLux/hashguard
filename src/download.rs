@@ -8,7 +8,11 @@ use std::{
 };
 
 use crate::{
-    color_templates::WARN_TEMPLATE_NO_BG_COLOR, filename_handling, os_specifics::OS, utils,
+    color_templates::WARN_TEMPLATE_NO_BG_COLOR,
+    filename_handling,
+    hasher::{Algorithm, Hasher},
+    os_specifics::OS,
+    utils,
 };
 use anyhow::Result;
 use ureq::{config::Config, http::header::*, ResponseExt};
@@ -40,10 +44,17 @@ impl std::fmt::Display for DownloadError {
 
 #[derive(Debug)]
 pub struct DownloadProperties {
+    pub algorithm: Algorithm,
     pub url: String,
     pub output_target: PathBuf,
     pub default_file_name: Option<String>,
     pub os_type: OS,
+}
+
+#[derive(Debug)]
+pub struct DownloadResult {
+    pub file_location: PathBuf,
+    pub hash_sum: String,
 }
 
 /// Enum to hold the state of the file size
@@ -77,7 +88,7 @@ enum FileSizeState {
 /// * Verify the response for the required HTTP headers
 /// * Starts a progress bar to display the download progress
 /// * Write all bytes from the HTTP response body to a file in 4KiB blocks
-pub fn execute_download(download_properties: DownloadProperties) -> Result<PathBuf> {
+pub fn execute_download(download_properties: DownloadProperties) -> Result<DownloadResult> {
     let spinner = ProgressBar::new_spinner()
         .with_message(format!(
             "Connection establishment... Timeout: {}s",
@@ -172,7 +183,12 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<PathB
         let body_reader = response.into_body().into_reader();
 
         // start the download process
-        make_download_req(file_path, body_reader, file_size_state)
+        make_download_req(
+            file_path,
+            body_reader,
+            file_size_state,
+            download_properties.algorithm,
+        )
     }
 }
 
@@ -180,7 +196,8 @@ fn make_download_req(
     file_path: PathBuf,
     mut body_reader: impl Read,
     file_size_state: FileSizeState,
-) -> Result<PathBuf> {
+    algorithm: Algorithm,
+) -> Result<DownloadResult> {
     // Create the file to write in
     let file = File::create(&file_path)?;
     let mut writer = BufWriter::new(file);
@@ -228,6 +245,9 @@ fn make_download_req(
     let mut buffer = [0; BUFFER_SIZE];
     let mut downloaded_bytes: usize = 0;
 
+    // get the right hasher for the given algorithm
+    let mut hasher = Hasher::new(algorithm);
+
     // Start measuring time for the download
     let start = Instant::now();
 
@@ -238,6 +258,9 @@ fn make_download_req(
                 if bytes_read == 0 {
                     break Ok(downloaded_bytes);
                 }
+
+                // Calculate the hash sum of the downloaded bytes chunk by chunk
+                hasher.update(&buffer[..bytes_read]);
 
                 // Try to write read bytes into the BufWriter
                 writer
@@ -276,32 +299,31 @@ fn make_download_req(
         }
     };
 
+    // Get the time where download is done
+    let end = Instant::now();
+
     progress_bar.finish_and_clear();
 
     let written_bytes = download_result?;
 
     // Generate user information
-    handle_download_result(start, written_bytes);
-
-    Ok(file_path)
-}
-
-fn handle_download_result(start_time: Instant, written_bytes: usize) {
-    // Measuring the time where download is done
-    let end = Instant::now();
-
     log::info!(
         "Download finished - Processed file size: {}",
         utils::convert_bytes_to_human_readable(written_bytes)
     );
 
     // calculate the total download time
-    let total_duration = end - start_time;
+    let total_duration = end - start;
 
     println!(
         "\nDownload done in   : {}",
         utils::calc_duration(total_duration.as_secs())
     );
+
+    Ok(DownloadResult {
+        file_location: file_path,
+        hash_sum: hex::encode(hasher.finalize()),
+    })
 }
 
 /// Determine the file size state from the server response
@@ -360,7 +382,7 @@ fn get_content_range(headers: &HeaderMap) -> FileSizeState {
         match header_value.to_str() {
             Ok(value) => {
                 // try to extract total size of the file to be downloaded
-                match value.split('/').last() {
+                match value.split('/').next_back() {
                     Some(total_size) => {
                         // if the last part of the header value contains a '*' the total size is unknown
                         // for example: Content-Range: bytes 0-1023/*

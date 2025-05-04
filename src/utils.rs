@@ -1,13 +1,15 @@
+use anyhow::Result;
 use path_absolutize::Absolutize;
 use regex::Regex;
 use std::path::Path;
 use url::Url;
 
 use crate::{
+    app,
     color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
     commands::{CommandResult, HashCompareResult},
+    hasher::Algorithm,
     os_specifics::{self, OS},
-    verify::Algorithm,
 };
 
 pub const BOUNCING_BAR: [&str; 16] = [
@@ -22,12 +24,12 @@ const GIB: f64 = KIB * MIB;
 const TIB: f64 = KIB * GIB;
 
 /// Processing of the command result
-pub fn processing_cmd_result(cmd_result: CommandResult) {
-    let hash_source = match cmd_result.file_location {
-        Some(file_location) => absolute_path_as_string(&file_location),
-        None => match cmd_result.buffer_size {
-            Some(size) => format!("Buffer of size {} byte(s)", size),
-            None => "Unknown".to_string(),
+pub fn processing_cmd_result(cmd_result: &CommandResult) -> Result<()> {
+    let hash_source = match &cmd_result.file_location {
+        Some(file_location) => absolute_path_as_string(file_location),
+        None => match &cmd_result.buffer {
+            Some(buffer) => format!("Buffer of size {} byte(s)", buffer.len()),
+            None => "Buffer of unknown size".to_string(),
         },
     };
 
@@ -38,15 +40,18 @@ pub fn processing_cmd_result(cmd_result: CommandResult) {
     );
 
     print_hash_result(
-        cmd_result.hash_compare_result,
+        cmd_result.hash_compare_result.as_ref(),
         cmd_result.used_algorithm,
         &cmd_result.calculated_hash_sum,
     );
+
+    save_calculated_hash_sum(cmd_result)?;
+    Ok(())
 }
 
 /// Print and log the hash result
 fn print_hash_result(
-    hash_to_compare: Option<HashCompareResult>,
+    hash_to_compare: Option<&HashCompareResult>,
     used_algorithm: Algorithm,
     calculated_hash_sum: &str,
 ) {
@@ -83,6 +88,42 @@ fn print_hash_result(
             WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
         );
     }
+}
+
+fn save_calculated_hash_sum(cmd_result: &CommandResult) -> Result<()> {
+    if cmd_result.save {
+        let app_data_dir = app::data_dir();
+        let (file_name, content) = if let Some(file_path) = &cmd_result.file_location {
+            let prefix = file_path
+                .file_name()
+                .unwrap_or(std::ffi::OsStr::new("hash_sum"))
+                .to_string_lossy();
+            (
+                format!(
+                    "{}.{}",
+                    prefix,
+                    cmd_result.used_algorithm.to_string().to_lowercase()
+                ),
+                format!("{}\t{}", cmd_result.calculated_hash_sum, prefix),
+            )
+        } else {
+            // If a buffer was hashed, use a default file name
+            (
+                format!(
+                    "hash_sum.{}",
+                    cmd_result.used_algorithm.to_string().to_lowercase()
+                ),
+                format!(
+                    "{}\t{}",
+                    cmd_result.calculated_hash_sum,
+                    cmd_result.buffer.as_deref().unwrap_or_default()
+                ),
+            )
+        };
+        let hash_sum_file_path = app_data_dir.join(file_name);
+        std::fs::write(hash_sum_file_path, content)?;
+    }
+    Ok(())
 }
 
 /// Gives you the correct time unit dependent on the remaining seconds.
@@ -174,7 +215,7 @@ pub fn extract_file_name_from_url(url: &str) -> Option<String> {
         .ok()?
         .path()
         .split('/')
-        .last()
+        .next_back()
         .and_then(|file_name| {
             if file_name.trim().is_empty() {
                 None
