@@ -123,20 +123,26 @@ cargo build --release
     ````
 
 **Local-Command**
-  * Verify a local file with a hash sum using SHA-1:
+  * Verify a local file with a hash sum using SHA-3:
     ````shell
-    hashguard local -p /path/to/local_file.txt a1b2c3d4e5f6 -a sha1
+    hashguard local -p /path/to/local_file.txt a1b2c3d4e5f6 -a sha3-256
     ````
 
   * Calculate a hash sum from a given ``String``:
     ````shell
-    hashguard local -b "Hello young Padawan"
+    hashguard local -b "Hello my eager young Padawan"
     ````
 
   * Calculate a hash sum from a local directory with the default hash algorithm:
     ````shell
     hashguard local -p /path/to/test_dir
     ````
+  
+  * Calculate a hash sum from a local file and save the calculated hash sum as a file:
+    ````shell
+    hashguard local -s -p /path/to/local_file.txt
+    ````
+    * The file containing the hash sum is stored in the application data directory
 
 **Use Logging**
   * Enable `debug` log level:
@@ -191,8 +197,17 @@ reg add HKCU\Console /v VirtualTerminalLevel /t REG_DWORD /d 1
 This command adds a registry key that enables the conpty feature, which provides ANSI escape sequence support in the Windows console.<br>
 Please re-open the terminal and the colored output should work.
 
-## Contributions and Bug Reports
-Contributions and bug reports are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on my GitHub repository.
+## Contributing
+Contributions are very welcome! Whether it's a bug fix, improvement, or new feature — your help is appreciated. To contribute, follow these simple steps:
+
+1. **Fork** this repository.
+2. **Create a new branch** for your changes.
+3. Make your changes, ensuring they are clean and well-documented.
+4. **Commit** your changes with a meaningful message.
+5. **Push** your branch to your fork.
+6. Open a pull request from your branch to the main repository.
+
+Please ensure your code passes any tests and follows the existing style. If you're not sure where to start, feel free to open an issue and ask!
 
 ## License
 HashGuard is released under the MIT License.
