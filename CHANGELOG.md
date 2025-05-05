@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [4.0.1] - 2025-05-08
+- Update dependencies
+- Improved error handling
+
+### Added
+- **Local-Command**
+  - Adding the processed bytes to the ProgressBar spinner during the hash sum calculation
+<br>
+
+
 ## [4.0.0] - 2025-05-04
 - Update dependencies
 - The calculation of the hash sum when downloading a file has been made more efficient. Now the hash sum is calculated directly during the download, which  reduces CPU and memory usage. As only small blocks of data are used for the calculation. The same applies to local files and directories.
@@ -15,7 +25,7 @@ All notable changes to this project will be documented in this file. The format 
 - ``SHA3`` hash algorithm is now supported
 - ``-s, --save`` flag, to be able to store the calculated hash sum in a file, stored in the app data directory
 - **Local-Command**
- - It is now possible to include file and directory names in the calculation of the hash sum by using the ``-i, --include-names`` flag
+  - It is now possible to include file and directory names in the calculation of the hash sum by using the ``-i, --include-names`` flag
 <br>
 
 
@@ -45,6 +55,7 @@ All notable changes to this project will be documented in this file. The format 
 - Switched from `color-eyre` to `anyhow` for error handling.
 - Removed stack trace display when `logging=debug`.
 <br>
+
 
 ## [3.0.5] - 2025-01-12
 - Update dependencies
