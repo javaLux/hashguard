@@ -14,7 +14,40 @@ use std::{
 };
 use walkdir::WalkDir;
 
-const CAPACITY: usize = 64 * 1024;
+struct HashSpinner {
+    spinner: ProgressBar,
+    processed_bytes: usize,
+}
+
+impl HashSpinner {
+    fn new() -> Self {
+        let spinner = ProgressBar::new_spinner()
+            .with_message("|Processed: 0 B| Calculate hash sum... this may take a while");
+        spinner.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&utils::BOUNCING_BAR)
+                .template("{spinner:.white} {msg}")
+                .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+        );
+        spinner.enable_steady_tick(Duration::from_millis(100));
+        HashSpinner {
+            spinner,
+            processed_bytes: 0,
+        }
+    }
+
+    fn finish_and_clear(self) {
+        self.spinner.finish_and_clear();
+    }
+
+    fn update(&mut self, bytes: usize) {
+        self.processed_bytes += bytes;
+        self.spinner.set_message(format!(
+            "|Processed: {}| Calculate hash sum... this may take a while",
+            utils::convert_bytes_to_human_readable(self.processed_bytes)
+        ));
+    }
+}
 
 pub fn get_buffer_hash(buffer: &[u8], algorithm: Algorithm) -> String {
     log::info!(
@@ -52,21 +85,6 @@ pub fn get_hash_for_object(
         utils::absolute_path_as_string(&p)
     );
 
-    // Build a Spinner-Progress-Bar
-    let spinner =
-        ProgressBar::new_spinner().with_message("Calculate hash sum... this may take a while");
-
-    // Define the spinner style
-    spinner.set_style(
-        ProgressStyle::default_spinner()
-            .tick_strings(&utils::BOUNCING_BAR)
-            .template("{spinner:.white} {msg}")
-            .unwrap_or_else(|_| ProgressStyle::default_spinner()),
-    );
-
-    // Set spinner tick every 100ms
-    spinner.enable_steady_tick(Duration::from_millis(100));
-
     // Use thread-safe Channels to transfer the Hash sum to the Main-Thread
     let (sender, receiver) = mpsc::channel();
 
@@ -99,9 +117,6 @@ pub fn get_hash_for_object(
         anyhow::anyhow!("Failed to receive hash sum from Hash-Worker-Thread.")
     });
 
-    // Ensure the spinner is finished and cleared
-    spinner.finish_and_clear();
-
     // Ensure the thread is joined
     handle.join().map_err(|e| {
         log::error!("Failed to join Hash-Worker-Thread - Details: {:?}", e);
@@ -115,8 +130,16 @@ pub fn get_hash_for_object(
 /// Includes file name (if needed) and the file content.
 fn hash_file<P: AsRef<Path>>(file: P, algorithm: Algorithm, include_names: bool) -> Result<String> {
     let file_path = file.as_ref();
-    let file = File::open(file_path)?;
-    let mut reader = BufReader::with_capacity(CAPACITY, file);
+    let file = File::open(file_path).map_err(|io_err| {
+        let msg = format!(
+            "Failed to open file: {}",
+            utils::absolute_path_as_string(file_path),
+        );
+        log::error!("{} - Details: {:?}", msg, io_err);
+
+        anyhow::anyhow!(msg)
+    })?;
+    let mut reader = BufReader::with_capacity(utils::CAPACITY, file);
     let mut hasher = Hasher::new(algorithm);
 
     // Add the file name to the hash
@@ -126,14 +149,33 @@ fn hash_file<P: AsRef<Path>>(file: P, algorithm: Algorithm, include_names: bool)
         }
     }
 
-    let mut buf = [0u8; CAPACITY];
-    loop {
-        let n = reader.read(&mut buf)?;
-        if n == 0 {
-            break;
+    let mut spinner = HashSpinner::new();
+
+    let mut buf = [0u8; utils::CAPACITY];
+
+    let result = loop {
+        match reader.read(&mut buf) {
+            Ok(n) => {
+                if n == 0 {
+                    break Ok(());
+                }
+                hasher.update(&buf[..n]);
+                spinner.update(n);
+            }
+            Err(io_err) => {
+                let msg = format!(
+                    "Failed to read from file: {}",
+                    utils::absolute_path_as_string(file_path),
+                );
+                log::error!("{} - Details: {:?}", msg, io_err);
+
+                break Err(anyhow::anyhow!(msg));
+            }
         }
-        hasher.update(&buf[..n]);
-    }
+    };
+
+    spinner.finish_and_clear();
+    result?;
     Ok(hex::encode(hasher.finalize()))
 }
 
@@ -162,34 +204,77 @@ fn hash_directory<P: AsRef<Path>>(
         }
     }
 
-    let mut buf = [0u8; CAPACITY];
+    let mut spinner = HashSpinner::new();
+    let mut result: Result<()> = Result::Ok(());
+
+    let mut buf = [0u8; utils::CAPACITY];
 
     for entry in entries {
         let path = entry.path();
         if include_names {
-            let relative_path = path.strip_prefix(dir.as_ref()).map_err(|err| {
-                log::error!(
-                    "Failed to strip prefix from path: {} - Details: {:?}",
-                    utils::absolute_path_as_string(path),
-                    err
-                );
-                anyhow::anyhow!(err)
-            })?;
+            let relative_path = match path.strip_prefix(root) {
+                Ok(relative_path) => relative_path,
+                Err(err) => {
+                    let msg = format!(
+                        "Failed to strip prefix from path: {}",
+                        utils::absolute_path_as_string(path),
+                    );
+                    log::error!(
+                        "Failed to strip prefix from path: {} - Details: {:?}",
+                        utils::absolute_path_as_string(path),
+                        err
+                    );
+                    result = Err(anyhow::anyhow!(msg));
+                    break;
+                }
+            };
 
             hasher.update(relative_path.to_string_lossy().as_bytes());
         }
 
         if path.is_file() {
-            let mut reader = BufReader::with_capacity(CAPACITY, File::open(path)?);
-            loop {
-                let n = reader.read(&mut buf)?;
-                if n == 0 {
+            match File::open(path) {
+                Ok(file) => {
+                    let mut reader = BufReader::with_capacity(utils::CAPACITY, file);
+                    let r = loop {
+                        match reader.read(&mut buf) {
+                            Ok(n) => {
+                                if n == 0 {
+                                    break Ok(());
+                                }
+                                hasher.update(&buf[..n]);
+                                spinner.update(n);
+                            }
+                            Err(io_err) => {
+                                let msg = format!(
+                                    "Failed to read from file: {}",
+                                    utils::absolute_path_as_string(path),
+                                );
+                                log::error!("{} - Details: {:?}", msg, io_err);
+
+                                break Err(anyhow::anyhow!(msg));
+                            }
+                        }
+                    };
+                    if let Err(io_err) = r {
+                        result = Err(io_err);
+                        break;
+                    }
+                }
+                Err(io_err) => {
+                    let msg = format!(
+                        "Failed to open file: {}",
+                        utils::absolute_path_as_string(path),
+                    );
+                    log::error!("{} - Details: {:?}", msg, io_err);
+                    result = Err(anyhow::anyhow!(msg));
                     break;
                 }
-                hasher.update(&buf[..n]);
             }
         }
     }
 
+    spinner.finish_and_clear();
+    result?;
     Ok(hex::encode(hasher.finalize()))
 }
