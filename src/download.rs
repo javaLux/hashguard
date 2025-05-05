@@ -19,7 +19,6 @@ use ureq::{config::Config, http::header::*, ResponseExt};
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-const BUFFER_SIZE: usize = 4096;
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(25);
 
 /// Error type for download operations
@@ -199,8 +198,15 @@ fn make_download_req(
     algorithm: Algorithm,
 ) -> Result<DownloadResult> {
     // Create the file to write in
-    let file = File::create(&file_path)?;
-    let mut writer = BufWriter::new(file);
+    let file = File::create(&file_path).map_err(|io_err| {
+        let msg = format!(
+            "Failed to create file: {}",
+            utils::absolute_path_as_string(&file_path),
+        );
+        log::error!("{} - Details: {:?}", msg, io_err);
+
+        DownloadError::new(msg)
+    })?;
 
     log::info!(
         "Start download - Total file size: {}",
@@ -242,7 +248,8 @@ fn make_download_req(
         }
     };
 
-    let mut buffer = [0; BUFFER_SIZE];
+    let mut writer = BufWriter::with_capacity(utils::CAPACITY, file);
+    let mut buffer = [0u8; utils::CAPACITY];
     let mut downloaded_bytes: usize = 0;
 
     // get the right hasher for the given algorithm
