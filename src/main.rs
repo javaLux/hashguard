@@ -1,7 +1,7 @@
 mod app;
 mod cli;
 mod color_templates;
-mod commands;
+mod command_handling;
 mod download;
 mod filename_handling;
 mod hasher;
@@ -29,8 +29,8 @@ fn run() -> Result<()> {
             app::set_ctrl_c_handler()?;
             // check which command is given (download or local)
             match args.command {
-                cli::Commands::Download(args) => commands::handle_download_cmd(args, os)?,
-                cli::Commands::Local(args) => commands::handle_local_cmd(args)?,
+                cli::Command::Download(args) => command_handling::handle_download_cmd(args, os)?,
+                cli::Command::Local(args) => command_handling::handle_local_cmd(args)?,
             }
         }
         // Only Linux, MacOs and Windows are supported

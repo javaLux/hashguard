@@ -219,11 +219,7 @@ fn hash_directory<P: AsRef<Path>>(
                         "Failed to strip prefix from path: {}",
                         utils::absolute_path_as_string(path),
                     );
-                    log::error!(
-                        "Failed to strip prefix from path: {} - Details: {:?}",
-                        utils::absolute_path_as_string(path),
-                        err
-                    );
+                    log::error!("{} - Details: {:?}", msg, err);
                     result = Err(anyhow::anyhow!(msg));
                     break;
                 }

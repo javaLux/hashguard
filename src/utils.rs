@@ -7,7 +7,7 @@ use url::Url;
 use crate::{
     app,
     color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
-    commands::{CommandResult, HashCompareResult},
+    command_handling::{CommandResult, HashCompareResult},
     hasher::Algorithm,
     os_specifics::{self, OS},
 };

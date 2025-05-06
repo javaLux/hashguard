@@ -73,13 +73,6 @@ impl fmt::Display for CommandValidationError {
 
 // Handle the CLI subcommand 'download'
 pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<()> {
-    // First check if a provided hash sum is valid
-    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
-        if !hasher::is_valid_hex_digit(origin_hash_sum) {
-            return Err(CommandValidationError::InvalidHashSum.into());
-        }
-    }
-
     // fetch the output target
     let output_target = args.output;
 
@@ -94,11 +87,6 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
     // get the download URL
     let download_url = &args.url;
-
-    if !utils::is_valid_url(download_url) {
-        let command_err = CommandValidationError::InvalidUrl;
-        return Err(command_err.into());
-    }
 
     // build the required DownloadProperties
     let download_properties = DownloadProperties {
@@ -143,13 +131,6 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
-    // First check if a provided hash sum is valid
-    if let Some(origin_hash_sum) = args.hash_sum.as_ref() {
-        if !hasher::is_valid_hex_digit(origin_hash_sum) {
-            return Err(CommandValidationError::InvalidHashSum.into());
-        }
-    }
-
     let (calculated_hash_sum, file_location, buffer) = if let Some(path) = args.path {
         // calculate the file hash
         let calculated_hash_sum =
@@ -161,7 +142,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
         (calculated_hash_sum, None, Some(some_text))
     } else {
         return Err(anyhow::anyhow!(
-            "Either a file path or a buffer must be provided."
+            "Either a path or a buffer must be provided."
         ));
     };
 

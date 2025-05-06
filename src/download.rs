@@ -176,7 +176,7 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
         };
 
         // build the final path under which the file is saved
-        let file_path = download_properties.output_target.join(filename.clone());
+        let file_path = download_properties.output_target.join(filename);
 
         // capture the server response body and turn it into a Reader
         let body_reader = response.into_body().into_reader();

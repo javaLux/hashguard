@@ -1,11 +1,11 @@
-use std::path::PathBuf;
-
+use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use std::path::PathBuf;
 
 use crate::{
     app::{version, LogLevel},
-    commands, filename_handling,
-    hasher::Algorithm,
+    command_handling, filename_handling,
+    hasher::{self, Algorithm},
     os_specifics, utils,
 };
 
@@ -13,7 +13,7 @@ use crate::{
 #[command(author, version = version(), about)]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Command,
 
     #[arg(
         short,
@@ -26,7 +26,7 @@ pub struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
-pub enum Commands {
+pub enum Command {
     /// Download a file and calculate a hash sum
     Download(DownloadArgs),
     /// Calculate a hash sum from a file/dir or a byte buffer
@@ -35,10 +35,18 @@ pub enum Commands {
 
 #[derive(Debug, Args)]
 pub struct DownloadArgs {
-    /// URL to be used for download the file [required]
+    #[arg(
+        help = "URL to be used for download the file [required]",
+        value_name = "URL",
+        value_parser = validate_url
+    )]
     pub url: String,
 
-    /// Origin hash sum [optional]
+    #[arg(
+        help = "Origin hash sum [optional]",
+        value_name = "HASH_SUM",
+        value_parser = validate_hash_sum
+    )]
     pub hash_sum: Option<String>,
 
     #[arg(
@@ -79,6 +87,13 @@ pub struct DownloadArgs {
 #[derive(Debug, Args)]
 pub struct LocalArgs {
     #[arg(
+        help = "Origin hash sum [optional]",
+        value_name = "HASH_SUM",
+        value_parser = validate_hash_sum
+    )]
+    pub hash_sum: Option<String>,
+
+    #[arg(
         short,
         long,
         conflicts_with = "buffer",
@@ -96,9 +111,6 @@ pub struct LocalArgs {
         value_name = "STRING"
     )]
     pub buffer: Option<String>,
-
-    /// Origin hash sum [optional]
-    pub hash_sum: Option<String>,
 
     #[arg(
         short,
@@ -128,7 +140,7 @@ pub struct LocalArgs {
 fn validate_output_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.is_dir() {
-        let cmd_err = commands::CommandValidationError::OutputTargetInvalid(
+        let cmd_err = command_handling::CommandValidationError::OutputTargetInvalid(
             utils::absolute_path_as_string(&path),
         )
         .to_string();
@@ -146,7 +158,7 @@ fn check_file_name(filename: &str) -> Result<String, String> {
         Ok(_) => Ok(filename.to_string()),
         Err(validate_err) => {
             let cmd_err =
-                commands::CommandValidationError::InvalidFilename(validate_err.to_string())
+                command_handling::CommandValidationError::InvalidFilename(validate_err.to_string())
                     .to_string();
             Err(cmd_err)
         }
@@ -157,11 +169,30 @@ fn check_file_name(filename: &str) -> Result<String, String> {
 fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(target);
     if !path.exists() {
-        let cmd_err =
-            commands::CommandValidationError::PathNotExist(utils::absolute_path_as_string(&path))
-                .to_string();
+        let cmd_err = command_handling::CommandValidationError::PathNotExist(
+            utils::absolute_path_as_string(&path),
+        )
+        .to_string();
         Err(cmd_err)
     } else {
         Ok(path)
+    }
+}
+
+/// Helper function to validate the hash sum argument
+fn validate_hash_sum(hash_sum: &str) -> Result<String, String> {
+    if !hasher::is_valid_hex_digit(hash_sum) {
+        Err(command_handling::CommandValidationError::InvalidHashSum.to_string())
+    } else {
+        Ok(hash_sum.to_string())
+    }
+}
+
+/// Helper function to validate the URL argument
+fn validate_url(url: &str) -> Result<String, String> {
+    if !utils::is_valid_url(url) {
+        Err(command_handling::CommandValidationError::InvalidUrl.to_string())
+    } else {
+        Ok(url.to_string())
     }
 }
