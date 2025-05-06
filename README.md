@@ -90,7 +90,7 @@ To build this project from scratch follow these steps:
 ```
 cargo build --release
 ```
-* The compiled binary will be available at `target/release/`
+* The compiled binary will be available at `./target/release/`
 
 ## How to use
 ### General Syntax
