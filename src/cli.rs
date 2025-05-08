@@ -72,7 +72,7 @@ pub struct DownloadArgs {
         long,
         help = "Rename the file to be downloaded",
         value_name = "FILE",
-        value_parser = check_file_name
+        value_parser = validate_file_name
     )]
     pub rename: Option<String>,
 
@@ -151,7 +151,7 @@ fn validate_output_target(target: &str) -> Result<PathBuf, String> {
 }
 
 /// Helper function to validate the option [-r, -rename] of the download command
-fn check_file_name(filename: &str) -> Result<String, String> {
+fn validate_file_name(filename: &str) -> Result<String, String> {
     // we can use safely `unwrap` because the os type was checked before parsing the cli arguments
     let os_type = os_specifics::get_os().unwrap();
     match filename_handling::validate_filename(&os_type, filename) {
