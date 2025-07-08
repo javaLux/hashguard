@@ -110,16 +110,13 @@ pub fn get_hash_for_object(
 
     // Wait for the hash sum calculation to complete
     let result = receiver.recv().map_err(|e| {
-        log::error!(
-            "Failed to receive hash sum from Hash-Worker-Thread - Details: {:?}",
-            e
-        );
+        log::error!("Failed to receive hash sum from Hash-Worker-Thread - Details: {e:?}");
         anyhow::anyhow!("Failed to receive hash sum from Hash-Worker-Thread.")
     });
 
     // Ensure the thread is joined
     handle.join().map_err(|e| {
-        log::error!("Failed to join Hash-Worker-Thread - Details: {:?}", e);
+        log::error!("Failed to join Hash-Worker-Thread - Details: {e:?}");
         anyhow::anyhow!("Failed to join Hash-Worker-Thread.")
     })?;
 
@@ -135,12 +132,13 @@ fn hash_file<P: AsRef<Path>>(file: P, algorithm: Algorithm, include_names: bool)
             "Failed to open file: {}",
             utils::absolute_path_as_string(file_path),
         );
-        log::error!("{} - Details: {:?}", msg, io_err);
+        log::error!("{msg} - Details: {io_err:?}");
 
         anyhow::anyhow!(msg)
     })?;
     let mut reader = BufReader::with_capacity(utils::CAPACITY, file);
     let mut hasher = Hasher::new(algorithm);
+    let mut spinner = HashSpinner::new();
 
     // Add the file name to the hash
     if include_names {
@@ -148,8 +146,6 @@ fn hash_file<P: AsRef<Path>>(file: P, algorithm: Algorithm, include_names: bool)
             hasher.update(file_name.to_string_lossy().as_bytes());
         }
     }
-
-    let mut spinner = HashSpinner::new();
 
     let mut buf = [0u8; utils::CAPACITY];
 
@@ -167,7 +163,7 @@ fn hash_file<P: AsRef<Path>>(file: P, algorithm: Algorithm, include_names: bool)
                     "Failed to read from file: {}",
                     utils::absolute_path_as_string(file_path),
                 );
-                log::error!("{} - Details: {:?}", msg, io_err);
+                log::error!("{msg} - Details: {io_err:?}");
 
                 break Err(anyhow::anyhow!(msg));
             }
@@ -187,6 +183,8 @@ fn hash_directory<P: AsRef<Path>>(
     include_names: bool,
 ) -> Result<String> {
     let root = dir.as_ref();
+    let mut spinner = HashSpinner::new();
+
     let entries: Vec<_> = WalkDir::new(root)
         .sort_by_key(|e| e.path().to_path_buf()) // Sort entries to ensure deterministic hashing
         .max_depth(usize::MAX)
@@ -204,7 +202,6 @@ fn hash_directory<P: AsRef<Path>>(
         }
     }
 
-    let mut spinner = HashSpinner::new();
     let mut result: Result<()> = Result::Ok(());
 
     let mut buf = [0u8; utils::CAPACITY];
@@ -219,7 +216,7 @@ fn hash_directory<P: AsRef<Path>>(
                         "Failed to strip prefix from path: {}",
                         utils::absolute_path_as_string(path),
                     );
-                    log::error!("{} - Details: {:?}", msg, err);
+                    log::error!("{msg} - Details: {err:?}");
                     result = Err(anyhow::anyhow!(msg));
                     break;
                 }
@@ -246,7 +243,7 @@ fn hash_directory<P: AsRef<Path>>(
                                     "Failed to read from file: {}",
                                     utils::absolute_path_as_string(path),
                                 );
-                                log::error!("{} - Details: {:?}", msg, io_err);
+                                log::error!("{msg} - Details: {io_err:?}");
 
                                 break Err(anyhow::anyhow!(msg));
                             }
