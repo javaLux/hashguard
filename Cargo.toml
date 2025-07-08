@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "4.0.1"
+version = "4.0.2"
 edition = "2021"
 description = "Command-Line tool for ensuring the integrity of files using hash sums"
 authors = ["javaLux"]
@@ -14,18 +14,18 @@ rust-version = "1.74.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 chrono = { version = "0.4.41", default-features = false, features = ["clock"] }
-clap = { version = "4.5.37", features = ["derive", "cargo", "string"] }
-ctrlc = "3.4.6"
-indicatif = { version = "0.17.11", default-features = false }
+clap = { version = "4.5.40", features = ["derive", "cargo", "string"] }
+ctrlc = "3.4.7"
+indicatif = { version = "0.18.0", default-features = false }
 log = "0.4.27"
-os_info = { version = "3.10.0", default-features = false }
+os_info = { version = "3.12.0", default-features = false }
 output-coloring = "0.1.0"
 path-absolutize = "3.1.1"
 percent-encoding = "2.3.1"
 regex = { version = "1.11.1", default-features = false, features = ["unicode"] }
 dirs = "6.0.0"
 simplelog = "0.12.2"
-ureq = "3.0.11"
+ureq = "3.0.12"
 url = { version = "2.5.4", default-features = false }
 anyhow = "1.0.98"
 sha2 = "0.10.9"
