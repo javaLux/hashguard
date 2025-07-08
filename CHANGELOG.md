@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [4.0.2] - 2025-07-08
+- Update dependencies
+- fix ``cargo`` clippy hints
+- improve the Hash-Spinner progress bar
+<br>
+
+
+## [Released]
+
 ## [4.0.1] - 2025-05-08
 - Update dependencies
 - Refactoring
