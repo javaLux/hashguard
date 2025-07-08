@@ -44,8 +44,8 @@ impl fmt::Display for CommandValidationError {
         let prefix = "Validation failed →";
         match self {
             CommandValidationError::PathNotExist(path) => {
-                let msg = format!("The specified path '{}' does not exist", path);
-                write!(f, "{}", msg)
+                let msg = format!("The specified path '{path}' does not exist");
+                write!(f, "{msg}")
             }
             CommandValidationError::InvalidUrl => {
                 write!(f, "{prefix} The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
@@ -58,14 +58,13 @@ impl fmt::Display for CommandValidationError {
             }
             CommandValidationError::OutputTargetInvalid(target) => {
                 let msg = format!(
-                    "Invalid output target - '{}' does not exist or is not a directory",
-                    target
+                    "Invalid output target - '{target}' does not exist or is not a directory"
                 );
-                write!(f, "{}", msg)
+                write!(f, "{msg}")
             }
             CommandValidationError::InvalidFilename(filename_err) => {
-                let msg = format!("Invalid filename - {}", filename_err);
-                write!(f, "{}", msg)
+                let msg = format!("Invalid filename - {filename_err}");
+                write!(f, "{msg}")
             }
         }
     }

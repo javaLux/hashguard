@@ -67,7 +67,7 @@ impl FromStr for Algorithm {
             "SHA3-256" => Ok(Algorithm::SHA3_256),
             "SHA3-384" => Ok(Algorithm::SHA3_384),
             "SHA3-512" => Ok(Algorithm::SHA3_512),
-            _ => Err(format!("Invalid algorithm: {} - Possible values: [SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256, SHA3-384, SHA3-512]", input)),
+            _ => Err(format!("Invalid algorithm: {input} - Possible values: [SHA2-224, SHA2-256, SHA2-384, SHA2-512, SHA3-224, SHA3-256, SHA3-384, SHA3-512]")),
         }
     }
 }

@@ -120,7 +120,7 @@ impl std::fmt::Display for CargoMetadata {
             self.operating_system,
         );
 
-        write!(f, "{}", pretty_print)
+        write!(f, "{pretty_print}")
     }
 }
 

@@ -66,8 +66,8 @@ pub fn initialize_logging(log_level: Option<LogLevel>) -> Result<()> {
 /// interruptions gracefully. If interrupted, the application will log the interruption and exit.
 pub fn set_ctrl_c_handler() -> Result<()> {
     let exit_cmd = || {
-        log::info!("{} was interrupted by user...", APP_NAME);
-        println!("{}", APP_INTERRUPTED_MSG);
+        log::info!("{APP_NAME} was interrupted by user...");
+        println!("{APP_INTERRUPTED_MSG}");
         // terminate app
         std::process::exit(1);
     };
@@ -146,13 +146,13 @@ fn initialize_log_file() -> Result<File> {
 /// Get the path to the primary log file. **Parent direct may not exist yet,**
 /// caller must create it.
 pub fn log_file() -> PathBuf {
-    data_dir().join(format!("{}.log", APP_NAME))
+    data_dir().join(format!("{APP_NAME}.log"))
 }
 
 /// Get the path to the backup log file **Parent direct may not exist yet,**
 /// caller must create it.
 pub fn log_file_old() -> PathBuf {
-    data_dir().join(format!("{}.log.old", APP_NAME))
+    data_dir().join(format!("{APP_NAME}.log.old"))
 }
 
 /// Creates the application's data directory.

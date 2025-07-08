@@ -104,7 +104,7 @@ pub fn get_hash_for_object(
                 .expect("Failed to send hash sum to main thread");
         })
         .map_err(|e| {
-            log::error!("Failed to spawn Hash-Worker-Thread - Details: {:?}", e);
+            log::error!("Failed to spawn Hash-Worker-Thread - Details: {e:?}");
             anyhow::anyhow!("Failed to spawn Hash-Worker-Thread.")
         })?;
 
@@ -259,7 +259,7 @@ fn hash_directory<P: AsRef<Path>>(
                         "Failed to open file: {}",
                         utils::absolute_path_as_string(path),
                     );
-                    log::error!("{} - Details: {:?}", msg, io_err);
+                    log::error!("{msg} - Details: {io_err:?}");
                     result = Err(anyhow::anyhow!(msg));
                     break;
                 }

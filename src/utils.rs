@@ -57,7 +57,7 @@ fn print_hash_result(
     used_algorithm: Algorithm,
     calculated_hash_sum: &str,
 ) {
-    let calculated_hash_sum = format!("Calculated hash sum: {}", calculated_hash_sum);
+    let calculated_hash_sum = format!("Calculated hash sum: {calculated_hash_sum}");
 
     log::info!("{calculated_hash_sum}");
     println!("{calculated_hash_sum}");
@@ -143,13 +143,13 @@ pub fn calc_duration(seconds: u64) -> String {
     let remaining_seconds = seconds % 60;
 
     if hours > 0 {
-        format!("{}h {}m {}s", hours, minutes, remaining_seconds)
+        format!("{hours}h {minutes}m {remaining_seconds}s")
     } else if minutes > 0 {
-        format!("{}m {}s", minutes, remaining_seconds)
+        format!("{minutes}m {remaining_seconds}s")
     } else if remaining_seconds < 1 {
         "< 1s".to_string()
     } else {
-        format!("{}s", remaining_seconds)
+        format!("{remaining_seconds}s")
     }
 }
 
@@ -351,7 +351,7 @@ pub fn absolute_path_as_string(path: &Path) -> String {
 /// ```
 pub fn convert_bytes_to_human_readable(bytes: usize) -> String {
     if bytes < KIB as usize {
-        format!("{} B", bytes)
+        format!("{bytes} B")
     } else if bytes < MIB as usize {
         format!("{:.2} KiB", bytes as f64 / KIB)
     } else if bytes < GIB as usize {

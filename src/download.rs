@@ -121,8 +121,7 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
             spinner.finish_and_clear();
 
             let download_err = DownloadError::new(format!(
-                "Failed to establish connection to the server: {}",
-                response_err
+                "Failed to establish connection to the server: {response_err}"
             ));
 
             log::error!("{response_err}");
@@ -139,7 +138,7 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
 
         let download_err = DownloadError::new(err_description.to_string());
 
-        log::error!("{}", download_err);
+        log::error!("{download_err}");
         Err(download_err.into())
     } else {
         // IMPORTANT: use the url from the response object, because in case of an redirect the
@@ -203,7 +202,7 @@ fn make_download_req(
             "Failed to create file: {}",
             utils::absolute_path_as_string(&file_path),
         );
-        log::error!("{} - Details: {:?}", msg, io_err);
+        log::error!("{msg} - Details: {io_err:?}");
 
         DownloadError::new(msg)
     })?;
@@ -277,7 +276,7 @@ fn make_download_req(
                             "Unable to write data from server response into file: {}",
                             utils::absolute_path_as_string(&file_path),
                         ));
-                        log::error!("{} - Details: {:?}", download_err, write_err);
+                        log::error!("{download_err} - Details: {write_err:?}");
                         download_err
                     })?;
 
@@ -300,7 +299,7 @@ fn make_download_req(
             Err(body_access_err) => {
                 let download_err =
                     DownloadError::new("Failed to read data from server response".to_string());
-                log::error!("{} - Details: {:?}", download_err, body_access_err);
+                log::error!("{download_err} - Details: {body_access_err:?}");
                 break Err(download_err);
             }
         }
@@ -361,9 +360,7 @@ fn get_content_length(headers: &HeaderMap) -> FileSizeState {
                             FileSizeState::Known(total_size)
                         } else {
                             log::error!(
-                                "The server response contains an invalid value for the file size. It can not be zero - {}: {}",
-                                CONTENT_LENGTH,
-                                total_size
+                                "The server response contains an invalid value for the file size. It can not be zero - {CONTENT_LENGTH}: {total_size}"
                             );
                             FileSizeState::Unknown
                         }
@@ -371,8 +368,7 @@ fn get_content_length(headers: &HeaderMap) -> FileSizeState {
                     Err(parse_err) => {
                         log::error!("The server response contains an invalid value for the file size.");
                         log::error!(
-                            "{}: {} --> {}",
-                            CONTENT_LENGTH, value, parse_err
+                            "{CONTENT_LENGTH}: {value} --> {parse_err}"
                         );
                         FileSizeState::Unknown
                     }
@@ -404,9 +400,7 @@ fn get_content_range(headers: &HeaderMap) -> FileSizeState {
                                         FileSizeState::Known(total_size)
                                     } else {
                                         log::error!(
-                                            "The server response contains an invalid value for the file size. It can not be zero - {}: {}",
-                                            CONTENT_RANGE,
-                                            total_size
+                                            "The server response contains an invalid value for the file size. It can not be zero - {CONTENT_RANGE}: {total_size}"
                                         );
                                         FileSizeState::Unknown
                                     }
@@ -414,8 +408,7 @@ fn get_content_range(headers: &HeaderMap) -> FileSizeState {
                                 Err(parse_err) => {
                                     log::error!("The server response contains an invalid value for the file size.");
                                     log::error!(
-                                        "{}: {} --> {}",
-                                        CONTENT_RANGE, total_size, parse_err
+                                        "{CONTENT_RANGE}: {total_size} --> {parse_err}"
                                     );
                                     FileSizeState::Unknown
                                 }

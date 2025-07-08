@@ -22,10 +22,10 @@ impl fmt::Display for FilenameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             FilenameError::InvalidOnWindows(invalid_chars) => {
-                write!(f, "Following chars are NOT allowed: {}", invalid_chars)
+                write!(f, "Following chars are NOT allowed: {invalid_chars}")
             }
             FilenameError::InvalidOnUnix(invalid_chars) => {
-                write!(f, "Following chars are NOT allowed: {}", invalid_chars)
+                write!(f, "Following chars are NOT allowed: {invalid_chars}")
             }
             FilenameError::ReservedFilenameOnWindows => {
                 write!(
@@ -147,7 +147,7 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> 
                 }
             }
             Err(err) => {
-                let err_msg = format!("{:?}", err);
+                let err_msg = format!("{err:?}");
                 break Err(anyhow::anyhow!(err_msg));
             }
         }
