@@ -41,20 +41,17 @@ impl Error for CommandValidationError {}
 
 impl fmt::Display for CommandValidationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let prefix = "Validation failed →";
+        // let prefix = "Validation failed →";
         match self {
             CommandValidationError::PathNotExist(path) => {
                 let msg = format!("The specified path '{path}' does not exist");
                 write!(f, "{msg}")
             }
             CommandValidationError::InvalidUrl => {
-                write!(f, "{prefix} The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
+                write!(f, "The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
             }
             CommandValidationError::InvalidHashSum => {
-                write!(
-                    f,
-                    "{prefix} The specified hash sum is not a valid hexadecimal digit"
-                )
+                write!(f, "The specified hash sum is not a valid hexadecimal digit")
             }
             CommandValidationError::OutputTargetInvalid(target) => {
                 let msg = format!(
