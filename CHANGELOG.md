@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [4.0.3] - 2025-08-19
+- Update dependencies
+- Migration to the new Rust Edition 2024
+- fix ``cargo`` clippy hints
+- Reformatting code style
+<br>
+
+
 ## [4.0.2] - 2025-07-08
 - Update dependencies
 - fix ``cargo`` clippy hints
