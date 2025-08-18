@@ -1,5 +1,5 @@
 use crate::{
-    app::{data_dir, set_rust_backtrace, APP_NAME},
+    app::{APP_NAME, data_dir, set_rust_backtrace},
     color_templates::WARN_TEMPLATE_NO_BG_COLOR,
     utils,
 };

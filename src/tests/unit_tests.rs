@@ -4,7 +4,7 @@ pub mod unit_tests {
 
     #[test]
     fn test_os_type() {
-        use os_specifics::{get_os, OS};
+        use os_specifics::{OS, get_os};
         let os = get_os();
 
         match os {

@@ -88,7 +88,8 @@ pub fn set_ctrl_c_handler() -> Result<()> {
 /// of an error. This is particularly useful during debugging to aid in identifying the
 /// source of errors.
 pub fn set_rust_backtrace() {
-    std::env::set_var("RUST_BACKTRACE", "1");
+    // TODO: Audit that the environment access only happens in single-threaded code.
+    unsafe { std::env::set_var("RUST_BACKTRACE", "1") };
 }
 
 /// Initializes the log writer for debugging purposes.

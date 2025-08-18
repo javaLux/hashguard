@@ -15,7 +15,7 @@ use crate::{
     utils,
 };
 use anyhow::Result;
-use ureq::{config::Config, http::header::*, ResponseExt};
+use ureq::{ResponseExt, config::Config, http::header::*};
 
 use indicatif::{ProgressBar, ProgressStyle};
 

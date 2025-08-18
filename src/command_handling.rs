@@ -48,7 +48,10 @@ impl fmt::Display for CommandValidationError {
                 write!(f, "{msg}")
             }
             CommandValidationError::InvalidUrl => {
-                write!(f, "The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com")
+                write!(
+                    f,
+                    "The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com"
+                )
             }
             CommandValidationError::InvalidHashSum => {
                 write!(f, "The specified hash sum is not a valid hexadecimal digit")

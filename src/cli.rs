@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 use crate::{
-    app::{version, LogLevel},
+    app::{LogLevel, version},
     command_handling, filename_handling,
     hasher::{self, Algorithm},
     os_specifics, utils,

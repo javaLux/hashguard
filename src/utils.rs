@@ -316,12 +316,10 @@ pub fn replace_invalid_chars_with_underscore(filename: &str, os_type: &OS) -> St
     };
 
     // Replace invalid characters with underscores
-    let sanitized_filename = filename
+    filename
         .chars()
         .map(|c| if invalid_chars.contains(c) { '_' } else { c })
-        .collect::<String>();
-
-    sanitized_filename
+        .collect::<String>()
 }
 
 /// Return the passed path as an absolute path, otherwise the passed path
