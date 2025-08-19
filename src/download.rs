@@ -120,11 +120,11 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
         Err(response_err) => {
             spinner.finish_and_clear();
 
-            let download_err = DownloadError::new(format!(
-                "Failed to establish connection to the server: {response_err}"
-            ));
+            let err_msg = format!("Failed to establish connection to the server [{response_err}]");
 
-            log::error!("{response_err}");
+            let download_err = DownloadError::new(err_msg);
+
+            log::error!("{download_err}");
 
             return Err(download_err.into());
         }
@@ -202,9 +202,10 @@ fn make_download_req(
             "Failed to create file: {}",
             utils::absolute_path_as_string(&file_path),
         );
-        log::error!("{msg} - Details: {io_err:?}");
 
-        DownloadError::new(msg)
+        let download_err = DownloadError::new(msg);
+        log::error!("{download_err} - Details: {io_err:?}");
+        download_err
     })?;
 
     log::info!(
