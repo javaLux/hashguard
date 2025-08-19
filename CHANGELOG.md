@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. The format 
 - Migration to the new Rust Edition 2024
 - fix ``cargo`` clippy hints
 - Reformatting code style
+- improve error messages
 <br>
 
 
