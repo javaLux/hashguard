@@ -21,8 +21,7 @@ struct HashSpinner {
 
 impl HashSpinner {
     fn new() -> Self {
-        let spinner = ProgressBar::new_spinner()
-            .with_message("|Processed: 0 B| Calculate hash sum... this may take a while");
+        let spinner = ProgressBar::new_spinner().with_message(HashSpinner::processed_bytes_msg(0));
         spinner.set_style(
             ProgressStyle::default_spinner()
                 .tick_strings(&utils::BOUNCING_BAR)
@@ -36,16 +35,36 @@ impl HashSpinner {
         }
     }
 
+    fn new_with_msg(msg: &str) -> Self {
+        let spinner = ProgressBar::new_spinner().with_message(format!("|{msg}|"));
+        spinner.set_style(
+            ProgressStyle::default_spinner()
+                .tick_strings(&utils::BOUNCING_BAR)
+                .template("{spinner:.white} {msg}")
+                .unwrap_or_else(|_| ProgressStyle::default_spinner()),
+        );
+        spinner.enable_steady_tick(Duration::from_millis(100));
+        HashSpinner {
+            spinner,
+            processed_bytes: 0,
+        }
+    }
+
+    fn processed_bytes_msg(bytes: usize) -> String {
+        format!(
+            "|Processed: {}| Calculate hash sum... this may take a while",
+            utils::convert_bytes_to_human_readable(bytes)
+        )
+    }
+
     fn finish_and_clear(self) {
         self.spinner.finish_and_clear();
     }
 
     fn update(&mut self, bytes: usize) {
         self.processed_bytes += bytes;
-        self.spinner.set_message(format!(
-            "|Processed: {}| Calculate hash sum... this may take a while",
-            utils::convert_bytes_to_human_readable(self.processed_bytes)
-        ));
+        self.spinner
+            .set_message(HashSpinner::processed_bytes_msg(self.processed_bytes));
     }
 }
 
@@ -183,7 +202,7 @@ fn hash_directory<P: AsRef<Path>>(
     include_names: bool,
 ) -> Result<String> {
     let root = dir.as_ref();
-    let mut spinner = HashSpinner::new();
+    let mut spinner = HashSpinner::new_with_msg("Read directory recursively");
 
     let entries: Vec<_> = WalkDir::new(root)
         .sort_by_key(|e| e.path().to_path_buf()) // Sort entries to ensure deterministic hashing
