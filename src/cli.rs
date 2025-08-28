@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{Args, Parser, Subcommand};
+use clap::{builder::NonEmptyStringValueParser, Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 use crate::{
@@ -108,7 +108,8 @@ pub struct LocalArgs {
         long,
         conflicts_with = "path",
         help = "Buffer (e.g. String) for which the hash sum will be calculated",
-        value_name = "STRING"
+        value_name = "STRING",
+        value_parser = NonEmptyStringValueParser::new()
     )]
     pub buffer: Option<String>,
 
