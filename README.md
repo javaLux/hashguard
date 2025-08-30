@@ -61,15 +61,15 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 * MacOs [Tested on MacOs Monterey]
 * Windows 10/11
 
-## Prerequisites
-### Installing Rust
+## Installation
+### Requirements
+#### Installing Rust
 To install Rust on your system, just go to the [official Rust website](https://www.rust-lang.org/tools/install), download and install the Rustup toolchain manager.
 
 **Notice:**
 Please refer to the installation instructions for your operating system. For certain operating systems, build tools need to be installed before you can use Rust.
 
-## Installation
-HashGuard is also available on [crates.io](https://crates.io/crates/hashguard) Rust community's crate registry.
+HashGuard is available on [crates.io](https://crates.io/crates/hashguard) Rust community's crate registry.
 So you can easily install it as binary on your local system.
 Use the follow command:
 ```
@@ -81,7 +81,8 @@ If you don't have Rust installed or prefer not to build the project yourself, yo
 - [Download the latest release](https://github.com/javaLux/hashguard/releases/latest)
 
 ## Build the project
-To build this project from scratch follow these steps:
+
+**_To build this project from scratch follow these steps:_**
 
 * Clone this repository
 * Open a terminal
@@ -97,10 +98,64 @@ cargo build --release
 * ``hashguard [OPTIONS] <COMMAND>``
 
 ### Command specific syntax
-* ``hashguard [OPTIONS] download [OPTIONS] <URL> [HASH_SUM]``
-* ``hashguard [OPTIONS] local [OPTIONS] [HASH_SUM]``
+* ``hashguard [OPTIONS] download [OPTIONS] <URL> [HASH]``
+* ``hashguard [OPTIONS] local [OPTIONS] [HASH]``
+
+### Passing a Hash
+If you want to specify a hash for comparison, you can pass it as usual as a string with valid hexadecimal digits.
+* For example:
+  ````shell
+      SHA2-256 Hash
+      "9e2a73027d72a28e5cb05cf9e87e71d5f5850d047a8b163f92f2189e5e8f42ac"
+  ````
+
+It is also possible to add a **_prefix_** to the hash to define the hash algorithm to be used.
+
+* For example:
+  ````shell
+      SHA2-256 Hash with prefix
+      "sha256:9e2a73027d72a28e5cb05cf9e87e71d5f5850d047a8b163f92f2189e5e8f42ac"
+  ````
+<br>
+
+**Supported prefixes:**
+
+| Prefix                 |   Associated algorithm   |
+|------------------------|--------------------------|
+| `sha224`, `sha2-224`, `sha2_224` | SHA2-224 |
+| `sha256`, `sha2-256`, `sha2_256` | SHA2-256 *(Default)* |
+| `sha384`, `sha2-384`, `sha2_384` | SHA2-384 |
+| `sha512`, `sha2-512`, `sha2_512` | SHA2-512 |
+| `sha3-224`, `sha3_224` | SHA3-224 |
+| `sha3-256`, `sha3_256` | SHA3-256 |
+| `sha3-384`, `sha3_384` | SHA3-384 |
+| `sha3-512`, `sha3_512` | SHA3-512 |
+
+> **Note:**  
+> If neither a prefix nor the option ``[-a, --algorithm]`` is specified, **SHA2-256** is automatically used as the default algorithm.
+> If a hash is passed with a prefix, the ``[-a, --algorithm]`` option is ignored by default.
+
 
 ### Usage Examples
+
+**Common**
+  * Get version info:
+    ````shell
+    hashguard --version
+    ````
+
+  * Get general help:
+    ````shell
+    hashguard --help
+    ````
+
+  * Get help on a specific command:
+    ````shell
+    hashguard download --help
+    ````
+    ````shell
+    hashguard local --help
+    ````
 
 **Download-Command**
   * Download a file and verify it with a hash sum by using the default hash algorithm SHA2-256:
@@ -112,6 +167,12 @@ cargo build --release
     ````shell
     hashguard download "https://example.com/file.zip" -a sha2-512
     ````
+  
+  * Download a file and use a prefixed hash to specify the algorithm:
+    ````shell
+    hashguard download "https://example.com/file.zip" sha224:a1b2c3d4e5f6
+    ````
+
   * Use a specific output directory for the downloaded file:
     ````shell
     hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -o /path/to/output_directory
@@ -155,25 +216,6 @@ cargo build --release
     ````
   * All logs are written to a log file stored in the application's data directory.
   * You can find out the application data directory with the [ `-V`, `--version` ] command
-
-**Common-Options**
-  * Get version info:
-    ````shell
-    hashguard --version
-    ````
-
-  * Get general help:
-    ````shell
-    hashguard --help
-    ````
-
-  * Get help on a specific command:
-    ````shell
-    hashguard download --help
-    ````
-    ````shell
-    hashguard local --help
-    ````
 
 ### Supported Hash Algorithms
 * SHA2-224
