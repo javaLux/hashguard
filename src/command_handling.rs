@@ -1,5 +1,3 @@
-use std::error::Error;
-use std::fmt;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -27,49 +25,6 @@ pub struct HashCompareResult {
     pub origin_hash_sum: String,
 }
 
-// Represents possible cli command errors
-#[derive(Debug, PartialEq, PartialOrd)]
-pub enum CommandValidationError {
-    PathNotExist(String),
-    InvalidUrl,
-    InvalidHashSum,
-    OutputTargetInvalid(String),
-    InvalidFilename(String),
-}
-
-impl Error for CommandValidationError {}
-
-impl fmt::Display for CommandValidationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // let prefix = "Validation failed →";
-        match self {
-            CommandValidationError::PathNotExist(path) => {
-                let msg = format!("The specified path '{path}' does not exist");
-                write!(f, "{msg}")
-            }
-            CommandValidationError::InvalidUrl => {
-                write!(
-                    f,
-                    "The specified URL is invalid. Please ensure the URL is correctly formatted, including the scheme (e.g. 'http://', 'https://'). For example: https://example.com"
-                )
-            }
-            CommandValidationError::InvalidHashSum => {
-                write!(f, "The specified hash sum is not a valid hexadecimal digit")
-            }
-            CommandValidationError::OutputTargetInvalid(target) => {
-                let msg = format!(
-                    "Invalid output target - '{target}' does not exist or is not a directory"
-                );
-                write!(f, "{msg}")
-            }
-            CommandValidationError::InvalidFilename(filename_err) => {
-                let msg = format!("Invalid filename - {filename_err}");
-                write!(f, "{msg}")
-            }
-        }
-    }
-}
-
 // Handle the CLI subcommand 'download'
 pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<()> {
     // fetch the output target
@@ -87,9 +42,19 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     // get the download URL
     let download_url = &args.url;
 
+    // check if the given hash sum was prefixed by a hash algorithm, if so ignore the option [-a, --algorithm]
+    let algorithm = if let Some(ref hash_property) = args.hash_property {
+        match hash_property.algorithm {
+            Some(algorithm) => algorithm,
+            None => args.algorithm,
+        }
+    } else {
+        args.algorithm
+    };
+
     // build the required DownloadProperties
     let download_properties = DownloadProperties {
-        algorithm: args.algorithm,
+        algorithm,
         url: download_url.to_string(),
         output_target,
         default_file_name: args.rename,
@@ -99,13 +64,14 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     // start the download
     let download_result = download::execute_download(download_properties)?;
 
-    let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
+    let cmd_result = if let Some(ref hash_property) = args.hash_property {
+        let origin_hash_sum = hash_property.hash.clone();
         let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &download_result.hash_sum);
 
         CommandResult {
             file_location: Some(download_result.file_location),
             buffer: None,
-            used_algorithm: args.algorithm,
+            used_algorithm: algorithm,
             calculated_hash_sum: download_result.hash_sum,
             hash_compare_result: Some(HashCompareResult {
                 is_hash_equal,
@@ -117,7 +83,7 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
         CommandResult {
             file_location: Some(download_result.file_location),
             buffer: None,
-            used_algorithm: args.algorithm,
+            used_algorithm: algorithm,
             calculated_hash_sum: download_result.hash_sum,
             hash_compare_result: None,
             save: args.save,
@@ -130,14 +96,23 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
 
 // Handle the CLI subcommand 'local'
 pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
+    let algorithm = if let Some(ref hash_property) = args.hash_sum {
+        match hash_property.algorithm {
+            Some(algorithm) => algorithm,
+            None => args.algorithm,
+        }
+    } else {
+        args.algorithm
+    };
+
     let (calculated_hash_sum, file_location, buffer) = if let Some(path) = args.path {
         // calculate the file hash
         let calculated_hash_sum =
-            local::get_hash_for_object(path.clone(), args.algorithm, args.include_names)?;
+            local::get_hash_for_object(path.clone(), algorithm, args.include_names)?;
         (calculated_hash_sum, Some(path), None)
     } else if let Some(some_text) = args.buffer {
         let buffer = some_text.as_bytes().to_vec();
-        let calculated_hash_sum = local::get_buffer_hash(&buffer, args.algorithm);
+        let calculated_hash_sum = local::get_buffer_hash(&buffer, algorithm);
         (calculated_hash_sum, None, Some(some_text))
     } else {
         return Err(anyhow::anyhow!(
@@ -145,13 +120,14 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
         ));
     };
 
-    let cmd_result = if let Some(origin_hash_sum) = args.hash_sum {
+    let cmd_result = if let Some(ref hash_property) = args.hash_sum {
+        let origin_hash_sum = hash_property.hash.clone();
         let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
 
         CommandResult {
             file_location,
             buffer,
-            used_algorithm: args.algorithm,
+            used_algorithm: algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: Some(HashCompareResult {
                 is_hash_equal,
@@ -163,7 +139,7 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
         CommandResult {
             file_location,
             buffer,
-            used_algorithm: args.algorithm,
+            used_algorithm: algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: None,
             save: args.save,
