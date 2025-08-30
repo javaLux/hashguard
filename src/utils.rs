@@ -360,3 +360,277 @@ pub fn convert_bytes_to_human_readable(bytes: usize) -> String {
         format!("{:.2} TiB", bytes as f64 / TIB)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use os_specifics::OS;
+
+    #[test]
+    fn test_valid_url_1() {
+        let test_url = "http://example.com/files/document.pdf";
+
+        assert!(is_valid_url(test_url));
+    }
+
+    #[test]
+    fn test_valid_url_2() {
+        let test_url = "https://google.de";
+
+        assert!(is_valid_url(test_url));
+    }
+
+    #[test]
+    fn test_invalid_url_1() {
+        let test_url = "HelloWorld";
+
+        assert!(!is_valid_url(test_url));
+    }
+
+    #[test]
+    fn test_invalid_url_2() {
+        let test_url = "file://tmp/foo";
+
+        assert!(!is_valid_url(test_url));
+    }
+
+    #[test]
+    fn test_invalid_url_3() {
+        let test_url = "www.example.com";
+        assert!(!is_valid_url(test_url));
+    }
+
+    #[test]
+    fn test_extract_filename_from_url_1() {
+        let test_url = "https://example.com/files/document.pdf";
+
+        let result = extract_file_name_from_url(test_url);
+
+        assert_eq!(result, Some("document.pdf".to_string()));
+    }
+
+    #[test]
+    fn test_extract_filename_from_url_2() {
+        let test_url = "http://blah.com/path1/path2/test_file.txt?a=1&b=2";
+
+        let result = extract_file_name_from_url(test_url);
+
+        assert_eq!(result, Some("test_file.txt".to_string()));
+    }
+
+    #[test]
+    fn test_extract_filename_from_url_3() {
+        let test_url = "https://google.de/";
+
+        let result = extract_file_name_from_url(test_url);
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_basic_case() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=\"example.txt\""),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_case_insensitive_attachment() {
+        assert_eq!(
+            extract_filename_from_content_disposition("Attachment; filename=\"example.txt\""),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_utf8_encoding() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename*=utf-8''example.txt"),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_utf8_encoding_uppercase() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename*=UTF-8''example.txt"),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_quotes() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=\"example.txt\""),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_single_quotes() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename='example.txt'"),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_extra_spaces() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=   \"example.txt\"   "),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_special_characters() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=\"example@123.txt\""),
+            Some("example@123.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_empty_filename() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=\"\""),
+            None
+        );
+    }
+
+    #[test]
+    fn test_no_filename_1() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment;"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_no_filename_2() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; other_param=test"),
+            None
+        );
+    }
+
+    #[test]
+    fn test_invalid_header() {
+        assert_eq!(
+            extract_filename_from_content_disposition("inline; filename=\"example.txt\""),
+            None
+        );
+    }
+
+    #[test]
+    fn test_multiple_parts_filename_not_last() {
+        assert_eq!(
+            extract_filename_from_content_disposition(
+                "attachment; something; filename=\"example.txt\""
+            ),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_multiple_parts_filename_star_not_last() {
+        assert_eq!(
+            extract_filename_from_content_disposition(
+                "attachment; something; filename*=utf-8''example.txt"
+            ),
+            Some("example.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn test_filename_with_mixed_case() {
+        assert_eq!(
+            extract_filename_from_content_disposition("attachment; filename=\"Example.TXT\""),
+            Some("Example.TXT".to_string())
+        );
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_empty_input() {
+        let input = "";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_no_encoding() {
+        let input = "example_filename.txt";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "example_filename.txt");
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_single_encoding() {
+        let input = "file%20with%20spaces.txt";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "file with spaces.txt");
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_multiple_encodings_1() {
+        let input = "file%20with%20spaces%20and%20special%21%23%25.txt";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "file with spaces and special!#%.txt");
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_multiple_encodings_2() {
+        let input = "Na%C3%AFve%20file.txt";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "Naïve file.txt");
+    }
+
+    #[test]
+    fn test_decode_percent_encoded_to_utf_invalid_encoding() {
+        // Invalid percent encoding, should be treated as plain text
+        let input = "invalid%2xencoding";
+        let result = decode_percent_encoded_to_utf_8(input);
+        assert_eq!(result, "invalid%2xencoding");
+    }
+
+    #[test]
+    fn test_replace_invalid_chars_with_underscore_linux() {
+        let filename = "my:file/with\\invalid\\characters.txt";
+        let os_type = OS::Linux;
+        let result = replace_invalid_chars_with_underscore(filename, &os_type);
+        assert_eq!(result, "my_file_with_invalid_characters.txt");
+    }
+
+    #[test]
+    fn test_replace_invalid_chars_with_underscore_macos() {
+        let filename = "my:file/with\\invalid\\characters.txt";
+        let os_type = OS::MacOs;
+        let result = replace_invalid_chars_with_underscore(filename, &os_type);
+        assert_eq!(result, "my_file_with_invalid_characters.txt");
+    }
+
+    #[test]
+    fn test_replace_invalid_chars_with_underscore_windows() {
+        let filename = "my?file*with<invalid>characters\\fancy:style.txt";
+        let os_type = OS::Windows;
+        let result = replace_invalid_chars_with_underscore(filename, &os_type);
+        assert_eq!(result, "my_file_with_invalid_characters_fancy_style.txt");
+    }
+
+    #[test]
+    fn test_replace_invalid_chars_with_underscore_no_replacement() {
+        let filename = "file_without_invalid_characters.txt";
+        let os_type = OS::Linux;
+        let result = replace_invalid_chars_with_underscore(filename, &os_type);
+        assert_eq!(result, "file_without_invalid_characters.txt");
+    }
+
+    #[test]
+    fn test_replace_invalid_chars_with_underscore_empty_filename() {
+        let filename = "";
+        let os_type = OS::Windows;
+        let result = replace_invalid_chars_with_underscore(filename, &os_type);
+        assert_eq!(result, "");
+    }
+}

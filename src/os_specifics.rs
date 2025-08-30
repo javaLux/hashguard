@@ -49,3 +49,20 @@ pub fn download_directory() -> PathBuf {
             .join("Downloads"),
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_os_type() {
+        let os = get_os();
+
+        match os {
+            Some(OS::Linux) => assert_eq!(Some(OS::Linux), os),
+            Some(OS::MacOs) => assert_eq!(Some(OS::MacOs), os),
+            Some(OS::Windows) => assert_eq!(Some(OS::Windows), os),
+            None => assert_eq!(None, os),
+        }
+    }
+}

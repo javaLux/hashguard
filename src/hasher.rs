@@ -197,7 +197,7 @@ pub fn is_hash_equal(origin_hash_sum: &str, calculated_hash_sum: &str) -> bool {
 
 #[allow(dead_code)]
 /// Checks if the given hash is a valid Lower-Hex digit
-pub fn is_lower_hex(hash: &str) -> bool {
+fn is_lower_hex(hash: &str) -> bool {
     !hash.trim().is_empty() && hash.chars().all(|c| matches!(c, 'a'..='f' | '0'..='9'))
 }
 
@@ -238,7 +238,7 @@ pub fn parse_hash(input: &str) -> Result<HashProperty, HashValidationError> {
 /// In base-16, digits range from 0 to 15, and these are represented as follows:<br>
 /// Decimal 0-9: Represented directly as 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.<br>
 /// Decimal 10-15: Represented as letters A, B, C, D, E, F (uppercase) or a, b, c, d, e, f (lowercase).
-pub fn is_valid_hex_digit(hash: &str) -> bool {
+fn is_valid_hex_digit(hash: &str) -> bool {
     !hash.trim().is_empty() && hash.chars().all(|c| c.is_ascii_hexdigit())
 }
 
