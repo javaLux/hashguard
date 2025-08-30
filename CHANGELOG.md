@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [4.1.0] - 2025-08-30
+- Update dependencies
+- improve CLI-Handling
+- Refactoring
+- improve error messages
+
+### Added
+- You can now use a prefix when passing a hash to specify the algorithm to be used.
+<br>
+
+
 ## [4.0.3] - 2025-08-19
 - Update dependencies
 - Migration to the new Rust Edition 2024
