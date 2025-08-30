@@ -36,7 +36,7 @@ pub fn processing_cmd_result(cmd_result: &CommandResult) -> Result<()> {
     };
 
     println!(
-        "\n{}       : {}",
+        "\n{}   : {}",
         WARN_TEMPLATE_NO_BG_COLOR.output("Input source"),
         hash_source
     );
@@ -57,14 +57,14 @@ fn print_hash_result(
     used_algorithm: Algorithm,
     calculated_hash_sum: &str,
 ) {
-    let calculated_hash_sum = format!("Calculated hash sum: {calculated_hash_sum}");
+    let calculated_hash_sum = format!("Calculated hash: {calculated_hash_sum}");
 
     log::info!("{calculated_hash_sum}");
     println!("{calculated_hash_sum}");
 
     if let Some(hash_to_compare) = hash_to_compare {
         let origin_hash = format!(
-            "Origin hash sum    : {}",
+            "Given hash     : {}",
             hash_to_compare.origin_hash_sum.to_ascii_lowercase()
         );
 
