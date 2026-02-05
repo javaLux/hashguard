@@ -177,10 +177,7 @@ fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
 
 /// Helper function to validate the hash sum argument
 fn validate_hash(hash: &str) -> Result<HashProperty, String> {
-    match hasher::parse_hash(hash) {
-        Ok(hash_property) => Ok(hash_property),
-        Err(e) => Err(e.to_string()),
-    }
+    hasher::parse_hash(hash).map_err(|err| err.to_string())
 }
 
 /// Helper function to validate the URL argument
