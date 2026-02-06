@@ -6,7 +6,12 @@ use std::{
     path::PathBuf,
 };
 
-use crate::utils;
+use crate::{
+    cli::{Cli, Command},
+    command_handling,
+    os_specifics::OS,
+    panic_handling, term_output, utils,
+};
 
 pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
@@ -18,9 +23,9 @@ pub const APP_INTERRUPTED_MSG: &str = concat!(
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum LogLevel {
-    /// log all available information to the log file
+    /// write all available information to the log file
     Debug,
-    /// log only necessary information to the log file
+    /// write only necessary information to the log file
     Info,
 }
 
@@ -31,6 +36,21 @@ impl std::fmt::Display for LogLevel {
             LogLevel::Info => write!(f, "INFO"),
         }
     }
+}
+
+pub fn run(args: Cli, os: OS) -> Result<()> {
+    initialize_logging(args.logging)?;
+    panic_handling::initialize_panic_hook(args.no_color)?;
+    set_ctrl_c_handler()?;
+    // execute the given command (download or local)
+    let cmd_result = match args.command {
+        Command::Download(args) => command_handling::handle_download_cmd(args, os)?,
+        Command::Local(args) => command_handling::handle_local_cmd(args)?,
+    };
+    term_output::print_result(&cmd_result, args.no_color)?;
+    utils::save_hash_sum(&cmd_result, args.save)?;
+
+    Ok(())
 }
 
 /// Initialize the application logging

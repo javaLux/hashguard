@@ -4,7 +4,6 @@ use std::io::{Write, stdout};
 
 use regex::Regex;
 
-use crate::color_templates::WARN_TEMPLATE_NO_BG_COLOR;
 use crate::os_specifics;
 use anyhow::Result;
 
@@ -137,11 +136,7 @@ pub fn enter_and_verify_file_name(os_type: &os_specifics::OS) -> Result<String> 
                         break Ok(file_name_trim.to_string());
                     }
                     Err(filename_err) => {
-                        println!(
-                            "{} - {}",
-                            WARN_TEMPLATE_NO_BG_COLOR.output("Invalid file name"),
-                            filename_err
-                        );
+                        println!("Invalid file name - {}", filename_err);
                         file_name.clear();
                     }
                 }

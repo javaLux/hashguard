@@ -6,7 +6,7 @@ use crate::{
     cli::{DownloadArgs, LocalArgs},
     download::{self, DownloadProperties},
     hasher::{self, Algorithm},
-    local, os_specifics, utils,
+    local, os_specifics,
 };
 
 #[derive(Debug)]
@@ -16,17 +16,16 @@ pub struct CommandResult {
     pub used_algorithm: Algorithm,
     pub calculated_hash_sum: String,
     pub hash_compare_result: Option<HashCompareResult>,
-    pub save: bool,
 }
 
 #[derive(Debug)]
 pub struct HashCompareResult {
-    pub is_hash_equal: bool,
-    pub origin_hash_sum: String,
+    pub is_equal: bool,
+    pub given_hash: String,
 }
 
 // Handle the CLI subcommand 'download'
-pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<()> {
+pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Result<CommandResult> {
     // fetch the output target
     let output_target = args.output;
 
@@ -65,8 +64,8 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
     let download_result = download::execute_download(download_properties)?;
 
     let cmd_result = if let Some(ref hash_property) = args.hash_property {
-        let origin_hash_sum = hash_property.hash.clone();
-        let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &download_result.hash_sum);
+        let given_hash = hash_property.hash.clone();
+        let is_hash_equal = hasher::is_hash_equal(&given_hash, &download_result.hash_sum);
 
         CommandResult {
             file_location: Some(download_result.file_location),
@@ -74,10 +73,9 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
             used_algorithm: algorithm,
             calculated_hash_sum: download_result.hash_sum,
             hash_compare_result: Some(HashCompareResult {
-                is_hash_equal,
-                origin_hash_sum,
+                is_equal: is_hash_equal,
+                given_hash,
             }),
-            save: args.save,
         }
     } else {
         CommandResult {
@@ -86,16 +84,14 @@ pub fn handle_download_cmd(args: DownloadArgs, os_type: os_specifics::OS) -> Res
             used_algorithm: algorithm,
             calculated_hash_sum: download_result.hash_sum,
             hash_compare_result: None,
-            save: args.save,
         }
     };
-    utils::processing_cmd_result(&cmd_result)?;
 
-    Ok(())
+    Ok(cmd_result)
 }
 
 // Handle the CLI subcommand 'local'
-pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
+pub fn handle_local_cmd(args: LocalArgs) -> Result<CommandResult> {
     let algorithm = if let Some(ref hash_property) = args.hash_sum {
         match hash_property.algorithm {
             Some(algorithm) => algorithm,
@@ -121,8 +117,8 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
     };
 
     let cmd_result = if let Some(ref hash_property) = args.hash_sum {
-        let origin_hash_sum = hash_property.hash.clone();
-        let is_hash_equal = hasher::is_hash_equal(&origin_hash_sum, &calculated_hash_sum);
+        let given_hash = hash_property.hash.clone();
+        let is_hash_equal = hasher::is_hash_equal(&given_hash, &calculated_hash_sum);
 
         CommandResult {
             file_location,
@@ -130,10 +126,9 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
             used_algorithm: algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: Some(HashCompareResult {
-                is_hash_equal,
-                origin_hash_sum,
+                is_equal: is_hash_equal,
+                given_hash,
             }),
-            save: args.save,
         }
     } else {
         CommandResult {
@@ -142,10 +137,8 @@ pub fn handle_local_cmd(args: LocalArgs) -> Result<()> {
             used_algorithm: algorithm,
             calculated_hash_sum: calculated_hash_sum.to_string(),
             hash_compare_result: None,
-            save: args.save,
         }
     };
-    utils::processing_cmd_result(&cmd_result)?;
 
-    Ok(())
+    Ok(cmd_result)
 }

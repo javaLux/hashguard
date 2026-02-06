@@ -1,6 +1,6 @@
 use crate::{
     hasher::{Algorithm, Hasher},
-    utils,
+    term_output, utils,
 };
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -24,7 +24,7 @@ impl HashSpinner {
         let spinner = ProgressBar::new_spinner().with_message(HashSpinner::processed_bytes_msg(0));
         spinner.set_style(
             ProgressStyle::default_spinner()
-                .tick_strings(&utils::BOUNCING_BAR)
+                .tick_strings(&term_output::BOUNCING_BAR)
                 .template("{spinner:.white} {msg}")
                 .unwrap_or_else(|_| ProgressStyle::default_spinner()),
         );
@@ -39,7 +39,7 @@ impl HashSpinner {
         let spinner = ProgressBar::new_spinner().with_message(format!("|{msg}|"));
         spinner.set_style(
             ProgressStyle::default_spinner()
-                .tick_strings(&utils::BOUNCING_BAR)
+                .tick_strings(&term_output::BOUNCING_BAR)
                 .template("{spinner:.white} {msg}")
                 .unwrap_or_else(|_| ProgressStyle::default_spinner()),
         );

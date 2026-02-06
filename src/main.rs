@@ -1,6 +1,5 @@
 mod app;
 mod cli;
-mod color_templates;
 mod command_handling;
 mod download;
 mod filename_handling;
@@ -8,51 +7,55 @@ mod hasher;
 mod local;
 mod os_specifics;
 mod panic_handling;
+mod term_output;
 mod utils;
 
-use crate::color_templates::{ERROR_TEMPLATE_NO_BG_COLOR, WARN_TEMPLATE_NO_BG_COLOR};
 use anyhow::Result;
 use clap::Parser;
+use std::io::Write;
+use termcolor::{Color, ColorSpec, WriteColor};
 
-fn run() -> Result<()> {
-    // get the underlying os type
-    let os_type = os_specifics::get_os();
+use crate::{
+    app::{APP_NAME, run},
+    cli::Cli,
+};
 
-    match os_type {
-        Some(os) => {
-            // Parse the given CLI-Arguments
-            let args = cli::Cli::parse();
+fn main() -> Result<()> {
+    // Parse the given CLI-Arguments
+    let args = Cli::parse();
+    let no_color = args.no_color;
 
-            app::initialize_logging(args.logging)?;
-            panic_handling::initialize_panic_hook()?;
-            app::set_ctrl_c_handler()?;
-            // check which command is given (download or local)
-            match args.command {
-                cli::Command::Download(args) => command_handling::handle_download_cmd(args, os)?,
-                cli::Command::Local(args) => command_handling::handle_local_cmd(args)?,
-            }
+    if let Some(os) = os_specifics::get_os() {
+        if let Err(e) = run(args, os) {
+            let mut stdout = term_output::get_stdout(no_color);
+            stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true))?;
+
+            writeln!(stdout, "\nAn error occurred while running {}:", APP_NAME)?;
+            term_output::reset_color(&mut stdout)?;
+
+            writeln!(stdout, "{e}\n")?;
         }
-        // Only Linux, MacOs and Windows are supported
-        None => {
-            eprintln!(
-                "{} - Supported OS: {}",
-                WARN_TEMPLATE_NO_BG_COLOR.output(
-                    "Could not execute the program, the current Operating-System is unsupported."
-                ),
-                format_args!(
-                    "[{:?}, {:?}, {:?}]",
-                    os_specifics::OS::Linux,
-                    os_specifics::OS::MacOs,
-                    os_specifics::OS::Windows
-                ),
-            );
-        }
+    } else {
+        let mut stdout = term_output::get_stdout(no_color);
+        stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+
+        writeln!(
+            stdout,
+            "Could not execute {}, the current Operating-System is unsupported",
+            APP_NAME
+        )?;
+
+        term_output::reset_color(&mut stdout)?;
+        writeln!(
+            stdout,
+            "Supported OS: {}",
+            format_args!(
+                "[{:?}, {:?}, {:?}]",
+                os_specifics::OS::Linux,
+                os_specifics::OS::MacOs,
+                os_specifics::OS::Windows
+            )
+        )?;
     }
-
     Ok(())
-}
-fn main() {
-    if let Err(e) = run() {
-        eprintln!("{}\n{}\n", ERROR_TEMPLATE_NO_BG_COLOR.output("error:"), e);
-    }
 }

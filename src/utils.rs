@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::Local;
 use path_absolutize::Absolutize;
 use regex::Regex;
 use std::path::Path;
@@ -6,18 +7,12 @@ use url::Url;
 
 use crate::{
     app,
-    color_templates::{ERROR_TEMPLATE, INFO_TEMPLATE, WARN_TEMPLATE_NO_BG_COLOR},
-    command_handling::{CommandResult, HashCompareResult},
-    hasher::Algorithm,
+    command_handling::CommandResult,
     os_specifics::{self, OS},
+    utils,
 };
 
 pub const CAPACITY: usize = 64 * 1024;
-
-pub const BOUNCING_BAR: [&str; 16] = [
-    "[    ]", "[=   ]", "[==  ]", "[=== ]", "[====]", "[ ===]", "[  ==]", "[   =]", "[    ]",
-    "[   =]", "[  ==]", "[ ===]", "[====]", "[=== ]", "[==  ]", "[=   ]",
-];
 
 // const for the calculation of the total file size in a human readable format
 const KIB: f64 = 1024.0;
@@ -25,106 +20,39 @@ const MIB: f64 = KIB * KIB;
 const GIB: f64 = KIB * MIB;
 const TIB: f64 = KIB * GIB;
 
-/// Processing of the command result
-pub fn processing_cmd_result(cmd_result: &CommandResult) -> Result<()> {
-    let hash_source = match &cmd_result.file_location {
-        Some(file_location) => absolute_path_as_string(file_location),
-        None => match &cmd_result.buffer {
-            Some(buffer) => format!("Buffer of size {} byte(s)", buffer.len()),
-            None => "Buffer of unknown size".to_string(),
-        },
-    };
-
-    println!(
-        "\n{}   : {}",
-        WARN_TEMPLATE_NO_BG_COLOR.output("Input source"),
-        hash_source
-    );
-
-    print_hash_result(
-        cmd_result.hash_compare_result.as_ref(),
-        cmd_result.used_algorithm,
-        &cmd_result.calculated_hash_sum,
-    );
-
-    save_calculated_hash_sum(cmd_result)?;
-    Ok(())
-}
-
-/// Print and log the hash result
-fn print_hash_result(
-    hash_to_compare: Option<&HashCompareResult>,
-    used_algorithm: Algorithm,
-    calculated_hash_sum: &str,
-) {
-    let calculated_hash_sum = format!("Calculated hash: {calculated_hash_sum}");
-
-    log::info!("{calculated_hash_sum}");
-    println!("{calculated_hash_sum}");
-
-    if let Some(hash_to_compare) = hash_to_compare {
-        let origin_hash = format!(
-            "Given hash     : {}",
-            hash_to_compare.origin_hash_sum.to_ascii_lowercase()
-        );
-
-        log::info!("{origin_hash}");
-        println!("{origin_hash}");
-
-        if !hash_to_compare.is_hash_equal {
-            println!(
-                "\n{} - Used hash algorithm: {}",
-                ERROR_TEMPLATE.output("Hash sums DO NOT match"),
-                WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
-            );
-        } else {
-            println!(
-                "\n{} - Used hash algorithm: {}",
-                INFO_TEMPLATE.output("Hash sums match"),
-                WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
-            );
-        }
-    } else {
-        println!(
-            "\n- Used hash algorithm: {}",
-            WARN_TEMPLATE_NO_BG_COLOR.output(used_algorithm)
-        );
-    }
-}
-
-fn save_calculated_hash_sum(cmd_result: &CommandResult) -> Result<()> {
-    if cmd_result.save {
+/// Saves the calculated hash sum in a file
+/// Filename Format: hash-sum-<Timestamp>.<algorithm>
+pub fn save_hash_sum(cmd_result: &CommandResult, save: bool) -> Result<()> {
+    if save {
         let app_data_dir = app::data_dir();
-        let (file_name, content) = if let Some(file_path) = &cmd_result.file_location {
-            let prefix = file_path
-                .file_name()
-                .unwrap_or(std::ffi::OsStr::new("hash_sum"))
-                .to_string_lossy();
-            (
-                format!(
-                    "{}.{}",
-                    prefix,
-                    cmd_result.used_algorithm.to_string().to_lowercase()
-                ),
-                format!("{}\t{}", cmd_result.calculated_hash_sum, prefix),
+
+        // Timestamp with milliseconds
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S_%3f");
+
+        // Set file extension, e.g. ".sha256"
+        let ext = cmd_result.used_algorithm.to_string().to_lowercase();
+
+        // Filename format "hash-sum-<timestamp>.<algorithm>"
+        let file_name = format!("hash-sum-{}.{}", timestamp, ext);
+
+        let content = if let Some(file_path) = &cmd_result.file_location {
+            format!(
+                "{}\t{}",
+                cmd_result.calculated_hash_sum,
+                utils::absolute_path_as_string(file_path)
             )
         } else {
-            // If a buffer was hashed, use a default file name
-            (
-                format!(
-                    "hash_sum.{}",
-                    cmd_result.used_algorithm.to_string().to_lowercase()
-                ),
-                format!(
-                    "{}\t{}",
-                    cmd_result.calculated_hash_sum,
-                    cmd_result.buffer.as_deref().unwrap_or_default()
-                ),
+            format!(
+                "{}\t{}",
+                cmd_result.calculated_hash_sum,
+                cmd_result.buffer.as_deref().unwrap_or_default()
             )
         };
+
         let hash_sum_file_path = app_data_dir.join(file_name);
         std::fs::write(hash_sum_file_path, content)?;
     }
+
     Ok(())
 }
 

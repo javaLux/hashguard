@@ -8,11 +8,10 @@ use std::{
 };
 
 use crate::{
-    color_templates::WARN_TEMPLATE_NO_BG_COLOR,
     filename_handling,
     hasher::{Algorithm, Hasher},
     os_specifics::OS,
-    utils,
+    term_output, utils,
 };
 use anyhow::Result;
 use ureq::{ResponseExt, config::Config, http::header::*};
@@ -97,7 +96,7 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
 
     spinner.set_style(
         ProgressStyle::default_spinner()
-            .tick_strings(&utils::BOUNCING_BAR)
+            .tick_strings(&term_output::BOUNCING_BAR)
             .template("{spinner:.white} {msg}")
             .unwrap_or_else(|_| ProgressStyle::default_spinner()),
     );
@@ -164,11 +163,7 @@ pub fn execute_download(download_properties: DownloadProperties) -> Result<Downl
         let filename = match extract_result {
             Some(filename) => filename,
             None => {
-                println!(
-                    "{}",
-                    WARN_TEMPLATE_NO_BG_COLOR
-                        .output("Could not determine a filename from server response")
-                );
+                println!("Could not determine a filename from server response");
                 println!("Please enter a name for the file to be downloaded");
                 filename_handling::enter_and_verify_file_name(&download_properties.os_type)?
             }
@@ -239,7 +234,7 @@ fn make_download_req(
             let spinner = ProgressBar::new_spinner();
             spinner.set_style(
                 ProgressStyle::default_spinner()
-                    .tick_strings(&utils::BOUNCING_BAR)
+                    .tick_strings(&term_output::BOUNCING_BAR)
                     .template("{spinner:.white} {msg}")
                     .unwrap_or_else(|_| ProgressStyle::default_spinner()),
             );

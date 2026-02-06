@@ -1,7 +1,6 @@
 use crate::{
     app::{APP_NAME, data_dir, set_rust_backtrace},
-    color_templates::WARN_TEMPLATE_NO_BG_COLOR,
-    utils,
+    term_output, utils,
 };
 use anyhow::{Context, Result};
 use std::{
@@ -11,10 +10,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use termcolor::{Color, ColorSpec, WriteColor};
+
 /// Define a custom panic hook to handle a application crash.
 /// Try to reset the terminal properties in case of the application panicked (crashed).
 /// This way, you won't have your terminal messed up if an unexpected error happens.
-pub fn initialize_panic_hook() -> Result<()> {
+pub fn initialize_panic_hook(no_color: bool) -> Result<()> {
     // set the RUST_BACKTRACE environment variable to 1
     set_rust_backtrace();
     // set the custom panic hook handler
@@ -23,7 +24,7 @@ pub fn initialize_panic_hook() -> Result<()> {
         let crash_report_file = crash_report_file();
 
         let backtrace = std::backtrace::Backtrace::capture();
-        let panic_report = PanicReport::new(panic_info, backtrace);
+        let panic_report = PanicReport::new(panic_info, backtrace, no_color);
         if let Err(err) = panic_report.write_report_and_print_msg(&crash_report_file) {
             log::error!("{err}");
             eprintln!("{err}")
@@ -128,6 +129,7 @@ impl std::fmt::Display for CargoMetadata {
 pub struct PanicReport<'a> {
     panic_info: &'a PanicHookInfo<'a>,
     backtrace: Backtrace,
+    no_color: bool,
 }
 
 /// A human readable crash report
@@ -168,10 +170,11 @@ impl HumanReadableReport {
 
 impl<'a> PanicReport<'a> {
     /// Constructs a new instance of [`PanicReport`].
-    pub fn new(panic_info: &'a PanicHookInfo, backtrace: Backtrace) -> Self {
+    pub fn new(panic_info: &'a PanicHookInfo, backtrace: Backtrace, no_color: bool) -> Self {
         Self {
             panic_info,
             backtrace,
+            no_color,
         }
     }
 
@@ -195,7 +198,14 @@ impl<'a> PanicReport<'a> {
 
         let path_to_crash_report = utils::absolute_path_as_string(p);
 
-        println!("\n{}", WARN_TEMPLATE_NO_BG_COLOR.output("The application panicked (crashed). Please see the Crash-Report file for more information"));
+        let mut stdout = term_output::get_stdout(self.no_color);
+        stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)).set_bold(true))?;
+
+        writeln!(
+            stdout,
+            "\nThe application panicked (crashed). Please see the Crash-Report file for more information"
+        )?;
+        stdout.reset()?;
         println!(
             "\n- A crash report file was generated: '{}' \
             \n- Submit an issue to: '{}/issues' with the subject of '{} Crash Report' \
