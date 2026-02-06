@@ -4,14 +4,31 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
-## [4.1.0] - 2025-08-30
+## [5.0.0] - 2026-02-06
 - Update dependencies
-- improve CLI-Handling
+- improved CLI-Handling
 - Refactoring
-- improve error messages
+- improved validation of the hash argument
+- improved colored output
+
+### Breaking Changes
+- the CLI Flag ``[-s, --save]`` for controlling the saving of the calculated hash, must now be set before specifying a command
+  - e.g.
+    - Old: ``hashguard download -s "http://example.com"``
+    - New: ``hashguard -s download "http://example.com"``
 
 ### Added
-- You can now use a prefix when passing a hash to specify the algorithm to be used.
+- Now you can disable the **colored output**, useful if the output is to be redirected to a file
+<br>
+
+## [4.1.0] - 2025-08-30
+- Update dependencies
+- improved CLI-Handling
+- Refactoring
+- improved error messages
+
+### Added
+- You can now use a **prefix** when passing a hash to specify the algorithm to be used.
 <br>
 
 
@@ -20,14 +37,14 @@ All notable changes to this project will be documented in this file. The format 
 - Migration to the new Rust Edition 2024
 - fix ``cargo`` clippy hints
 - Reformatting code style
-- improve error messages
+- improved error messages
 <br>
 
 
 ## [4.0.2] - 2025-07-08
 - Update dependencies
 - fix ``cargo`` clippy hints
-- improve the Hash-Spinner progress bar
+- improved the Hash-Spinner progress bar
 <br>
 
 
@@ -36,7 +53,7 @@ All notable changes to this project will be documented in this file. The format 
 ## [4.0.1] - 2025-05-08
 - Update dependencies
 - Refactoring
-- Improved error handling
+- improvedd error handling
 
 ### Added
 - **Local-Command**
@@ -66,9 +83,9 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [3.1.0] - 2025-02-28
 - Update dependencies
-- Improved panic handling to enhance stability
+- improvedd panic handling to enhance stability
 - Enhanced error messages for better debugging
-- Improved CLI command descriptions for clarity
+- improvedd CLI command descriptions for clarity
 - Refactoring
 
 ### Added
@@ -81,7 +98,7 @@ All notable changes to this project will be documented in this file. The format 
 - Updated logging mechanism:
   - Instead of creating a new log file on every app start, logs are now written to a single file until it reaches **1MB**.
   - Once the file reaches this limit, it is renamed with the `.old` suffix, and a new log file is created.
-  - This prevents excessive log file creation and improves log management.
+  - This prevents excessive log file creation and improveds log management.
 - Switched from `color-eyre` to `anyhow` for error handling.
 - Removed stack trace display when `logging=debug`.
 <br>
@@ -99,7 +116,7 @@ All notable changes to this project will be documented in this file. The format 
 ## [3.0.4] - 2025-01-01
 - Refactoring
 - Update dependencies
-- improve user error messages
+- improved user error messages
 
 ### Fixed
 - report handler crashed(panicked) on windows if `RUST_BACKTRACE` set to full
@@ -113,7 +130,7 @@ All notable changes to this project will be documented in this file. The format 
 - `download` command
   - set connection time out to 25 sec
   - display user info during the connection establishment
-  - improve logging behavior by using the debug log level
+  - improved logging behavior by using the debug log level
     - in case of an successfully request, the response headers will be logged
     - in case of an failed request, the response headers and the response body will be logged
 <br>
@@ -125,7 +142,7 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies
 
 ### Changed
-- Validation improvements of download command options
+- Validation improvedments of download command options
   - filename validation => option `[-r, --rename]`
   - output target validation => option `[-o, --output]`
 <br>
@@ -138,7 +155,7 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies
 
 ### Changed
-- Improve error messages
+- improved error messages
 
 ### Added
 - Validation of a given hash sum, only a valid hexadecimal digit is accepted for the comparison
@@ -178,7 +195,7 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies
 
 ### Changed
-- Improve user and log error messages
+- improved user and log error messages
 - Now ``chunked`` file downloads are supported
 <br>
 
@@ -188,7 +205,7 @@ All notable changes to this project will be documented in this file. The format 
 - Update dependencies
 
 ### Changed
-- Improvement of the URL validation for the ``download`` command, e.g. only the protocols ``http`` and ``https`` are supported
+- improvedment of the URL validation for the ``download`` command, e.g. only the protocols ``http`` and ``https`` are supported
 <br>
 
 
@@ -213,8 +230,8 @@ All notable changes to this project will be documented in this file. The format 
 - Add a Signal handler for ``Ctrl_C``
 
 ### Changed
-- Improve user error messages
-- Improve debug log messages
+- improved user error messages
+- improved debug log messages
 <br>
 
 
@@ -256,7 +273,7 @@ All notable changes to this project will be documented in this file. The format 
   - using dependency [path-absolutize](https://crates.io/crates/path-absolutize)
 
 ### Changed
-- improvement of error messages
+- improvedment of error messages
 <br>
 
 
@@ -266,9 +283,9 @@ All notable changes to this project will be documented in this file. The format 
 - Refactoring
 
 ### Changed
-- Improvement of the code base
-- Improvement of the user messages
-- Improvement of error handling - use [color-eyre](https://crates.io/crates/color-eyre) as error report handler
+- improvedment of the code base
+- improvedment of the user messages
+- improvedment of error handling - use [color-eyre](https://crates.io/crates/color-eyre) as error report handler
 - Add a new CLI-Option [-r, --rename] for the ``download`` command -> you can now specify a new file name for the file to be downloaded
 <br>
 
@@ -289,11 +306,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.4] - 2023-08-15
 ### Changed
-- Improve user specific output
-- Improve the general program logic
+- improved user specific output
+- improved the general program logic
 - Update [chksum](https://crates.io/crates/chksum/0.2.0) library to ``v0.2.0``
 - Update dependencies ``Cargo.lock``
-- Improve the usage of the ``chksum`` library
+- improved the usage of the ``chksum`` library
 - A big thank you to the following contributors without whom the above changes would not have been possible:
 - [@ventaquil](https://github.com/ventaquil)
 <br>
@@ -301,7 +318,7 @@ All notable changes to this project will be documented in this file. The format 
 ## [1.0.3] - 2023-08-09
 ### Changed
 - Update dependencies
-- Improved error handling and messages.
+- improvedd error handling and messages.
 <br>
 
 ## [1.0.2] - 2023-08-02
@@ -311,7 +328,7 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [1.0.1] - 2023-08-01
 ### Changed
-- Improve ``README.md``
+- improved ``README.md``
 <br>
 
 ## [1.0.0] - 2023-08-01
