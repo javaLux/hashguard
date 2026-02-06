@@ -20,9 +20,19 @@ pub struct Cli {
         long,
         help = "Set up the application logging",
         value_enum,
-        value_name = "OPTIONAL"
+        value_name = "VALUE"
     )]
     pub logging: Option<LogLevel>,
+
+    #[arg(short = 'c', long = "no-color", help = "Disable colored output")]
+    pub no_color: bool,
+
+    #[arg(
+        short,
+        long,
+        help = "Save the calculated hash to a file, stored in the app data directory"
+    )]
+    pub save: bool,
 }
 
 #[derive(Debug, Subcommand)]
@@ -43,7 +53,7 @@ pub struct DownloadArgs {
     pub url: String,
 
     #[arg(
-        help = "Original hash sum [optional]",
+        help = "Original hash [optional]",
         value_name = "HASH",
         value_parser = validate_hash
     )]
@@ -71,17 +81,10 @@ pub struct DownloadArgs {
         short,
         long,
         help = "Rename the file to be downloaded",
-        value_name = "FILE",
+        value_name = "NAME",
         value_parser = validate_file_name
     )]
     pub rename: Option<String>,
-
-    #[arg(
-        short,
-        long,
-        help = "Save the hash to a file, stored in the app data directory"
-    )]
-    pub save: bool,
 }
 
 #[derive(Debug, Args)]
@@ -128,13 +131,6 @@ pub struct LocalArgs {
         help = "Include file and directory names in the hash computation [Only has an effect with the option --path]"
     )]
     pub include_names: bool,
-
-    #[arg(
-        short,
-        long,
-        help = "Save the hash to a file, stored in the app data directory"
-    )]
-    pub save: bool,
 }
 
 /// Helper function to validate the option [-o, -output] of the download command
@@ -175,7 +171,7 @@ fn validate_hash_target(target: &str) -> Result<PathBuf, String> {
     }
 }
 
-/// Helper function to validate the hash sum argument
+/// Helper function to validate the hash argument
 fn validate_hash(hash: &str) -> Result<HashProperty, String> {
     hasher::parse_hash(hash).map_err(|err| err.to_string())
 }
