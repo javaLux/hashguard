@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "hashguard"
-version = "4.1.0"
+version = "5.0.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -384,13 +384,13 @@ dependencies = [
  "indicatif",
  "log",
  "os_info",
- "output-coloring",
  "path-absolutize",
  "percent-encoding",
  "regex",
  "sha2",
  "sha3",
  "simplelog",
+ "termcolor",
  "ureq",
  "url",
  "walkdir",
@@ -889,12 +889,6 @@ dependencies = [
  "objc2-ui-kit",
  "windows-sys 0.61.2",
 ]
-
-[[package]]
-name = "output-coloring"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e37fad9c36bd1dadfd73fe8c7913f376350449a7e00fca1fea4323b3198a4ec"
 
 [[package]]
 name = "path-absolutize"
