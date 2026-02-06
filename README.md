@@ -25,14 +25,14 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
 ## Features
 * ### Download-Command
   * Download a file and have a specific hash sum calculated depending on the selected hash algorithm
-  * Or you can directly enter a known hash sum to compare it after the download.
+  * Or you can directly enter a known hash to compare it after the download.
     This allows you to check whether the file was changed during the download process
   * **_Notice_**
     * If you use the download command, please enclose the URL in double quotation marks.
       Because by enclosing the URL in double quotation marks, you tell the shell to treat the entire string as a single argument, even if it contains spaces or other special characters. This can prevent errors and unexpected behavior in your shell.
   
 * ### Local-Command
-  * Allows to hash local files, directories or any byte-buffer (furthermore you can also compare with a specific hash sum)
+  * Allows to hash local files, directories or any byte-buffer (furthermore you can also compare with a specific hash)
   * **Options**
     * _include-names_
         * Enables the inclusion of file and directory names for the calculation of the hash sum. This option only has an effect in conjunction with the ``--path`` option
@@ -47,9 +47,11 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
     * You can only use one option per call. So either ``path`` or ``buffer``
 
 
-* **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash sum with a provided hash value.
+* **Hash Verification:** Verify the authenticity of downloaded or local files by comparing their hash with a specified hash. Any mismatched hash digits
+will be highlighted (only if colored output is not disabled).
 * **Support for Various Hash Algorithms:** HashGuard supports different hash algorithms, including SHA-2, SHA-3 family. The default Hash-Algorithm is SHA2-256.
 * **Intuitive Command-Line Interface:** The simple and user-friendly CLI lets you easily calculate and compare hash sums.
+* **Enable or Disable colored output**
 * **Logging**
   * To enable logging, set one of the following log level options: [ `-l=debug|info`, `--logging=debug|info` ]
     * `debug` log level: write all available information to the log file
@@ -57,8 +59,8 @@ HashGuard is a lean and efficient command-line tool designed to simplify the pro
     * `info` log level: write only necessary information to the log file (e.g. common application operations and error messages)
 
 ## Supported OS
-* Linux [All common distributions]
-* MacOs [Tested on MacOs Monterey]
+* Linux
+* MacOs
 * Windows 10/11
 
 ## Installation
@@ -182,6 +184,10 @@ It is also possible to add a **_prefix_** to the hash to define the hash algorit
     ````shell
     hashguard download "https://example.com/image.jpg" a1b2c3d4e5f6 -r "my_fancy_new_file.jpg"
     ````
+  * Disable colored output:
+    ````shell
+    hashguard -c download "https://example.com/file.zip"
+    ````
 
 **Local-Command**
   * Verify a local file with a hash sum using SHA-3:
@@ -199,11 +205,12 @@ It is also possible to add a **_prefix_** to the hash to define the hash algorit
     hashguard local -p /path/to/test_dir
     ````
   
-  * Calculate a hash sum from a local file and save the calculated hash sum as a file:
+  * Calculate a hash sum from a local file and save the calculated hash to a file:
     ````shell
-    hashguard local -s -p /path/to/local_file.txt
+    hashguard -s local -p /path/to/local_file.txt
     ````
-    * The file containing the hash sum is stored in the application data directory
+    * The file containing the calculated hash following by the input source (e.g. Path or the byte buffer)
+    * You find the file in the application data directory.
 
 **Use Logging**
   * Enable `debug` log level:
