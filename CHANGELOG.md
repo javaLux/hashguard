@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [5.0.1] - 2026-04-13
+- Update dependencies
+- improved tests
+- Refactoring
+<br>
+
 ## [5.0.0] - 2026-02-06
 - Update dependencies
 - improved CLI-Handling
