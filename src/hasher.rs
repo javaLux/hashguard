@@ -170,14 +170,14 @@ impl Hasher {
     /// Calculates the hash sum of the provided data and returns it as a hexadecimal string.
     pub fn digest_hex_lower(&self, data: &[u8]) -> String {
         match self {
-            Hasher::SHA2_224(_) => format!("{:x}", sha2::Sha224::digest(data)),
-            Hasher::SHA2_256(_) => format!("{:x}", sha2::Sha256::digest(data)),
-            Hasher::SHA2_384(_) => format!("{:x}", sha2::Sha384::digest(data)),
-            Hasher::SHA2_512(_) => format!("{:x}", sha2::Sha512::digest(data)),
-            Hasher::SHA3_224(_) => format!("{:x}", sha3::Sha3_224::digest(data)),
-            Hasher::SHA3_256(_) => format!("{:x}", sha3::Sha3_256::digest(data)),
-            Hasher::SHA3_384(_) => format!("{:x}", sha3::Sha3_384::digest(data)),
-            Hasher::SHA3_512(_) => format!("{:x}", sha3::Sha3_512::digest(data)),
+            Hasher::SHA2_224(_) => hex::encode(sha2::Sha224::digest(data)),
+            Hasher::SHA2_256(_) => hex::encode(sha2::Sha256::digest(data)),
+            Hasher::SHA2_384(_) => hex::encode(sha2::Sha384::digest(data)),
+            Hasher::SHA2_512(_) => hex::encode(sha2::Sha512::digest(data)),
+            Hasher::SHA3_224(_) => hex::encode(sha3::Sha3_224::digest(data)),
+            Hasher::SHA3_256(_) => hex::encode(sha3::Sha3_256::digest(data)),
+            Hasher::SHA3_384(_) => hex::encode(sha3::Sha3_384::digest(data)),
+            Hasher::SHA3_512(_) => hex::encode(sha3::Sha3_512::digest(data)),
         }
     }
 }
@@ -389,8 +389,13 @@ mod tests {
     }
 
     #[test]
-    fn hash_equal() {
+    fn hash_equal_lower_case() {
         assert!(is_hash_equal(DATA_SHA2_224, DATA_SHA2_224))
+    }
+
+    #[test]
+    fn hash_equal_mix_case() {
+        assert!(is_hash_equal(DATA_SHA2_224, &DATA_SHA2_224.to_ascii_uppercase()))
     }
 
     #[test]
