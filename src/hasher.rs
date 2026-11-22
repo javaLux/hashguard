@@ -395,7 +395,10 @@ mod tests {
 
     #[test]
     fn hash_equal_mix_case() {
-        assert!(is_hash_equal(DATA_SHA2_224, &DATA_SHA2_224.to_ascii_uppercase()))
+        assert!(is_hash_equal(
+            DATA_SHA2_224,
+            &DATA_SHA2_224.to_ascii_uppercase()
+        ))
     }
 
     #[test]
