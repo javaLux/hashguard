@@ -1,6 +1,6 @@
 [package]
 name = "hashguard"
-version = "5.0.2"
+version = "5.0.3"
 edition = "2024"
 description = "Command-Line tool for ensuring the integrity of files using hash sums"
 authors = ["javaLux"]
