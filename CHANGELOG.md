@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file. The format 
 
 ## [Released]
 
+## [5.0.3] - 2026-11-22
+- Update dependencies
+- Update Github actions
+<br>
+
 ## [5.0.2] - 2026-06-03
 - Update dependencies
 <br>
